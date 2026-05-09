@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0a">
+<title>ETF Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1e1e1e;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f0;
+    --text2: #888;
+    --text3: #555;
+    --green: #4ade80;
+    --green-dim: rgba(74,222,128,0.12);
+    --amber: #fbbf24;
+    --amber-dim: rgba(251,191,36,0.12);
+    --red: #f87171;
+    --red-dim: rgba(248,113,113,0.12);
+    --blue: #60a5fa;
+    --blue-dim: rgba(96,165,250,0.1);
+    --accent: #e8e8e8;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15px; overscroll-behavior: none; }
+  body { display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; }
+
+  /* Header */
+  .app-header { padding: 52px 20px 12px; display: flex; align-items: baseline; justify-content: space-between; }
+  .app-title { font-family: var(--mono); font-size: 13px; font-weight: 400; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; }
+  .month-nav { display: flex; align-items: center; gap: 12px; }
+  .month-nav button { background: none; border: none; color: var(--text2); font-size: 18px; cursor: pointer; line-height: 1; padding: 4px; }
+  .month-nav button:disabled { color: var(--text3); cursor: default; }
+  .month-label { font-family: var(--mono); font-size: 13px; color: var(--text); min-width: 68px; text-align: center; }
+
+  /* Content */
+  .content { flex: 1; overflow-y: auto; padding: 0 16px; padding-bottom: 90px; }
+
+  /* Summary strip */
+  .summary-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .stat { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .stat-label { font-size: 11px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .stat-val { font-size: 24px; font-weight: 300; color: var(--text); font-family: var(--mono); }
+  .stat-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+  /* Big progress ring */
+  .ring-wrap { display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+  .ring-container { position: relative; width: 110px; height: 110px; }
+  .ring-container svg { transform: rotate(-90deg); }
+  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring-pct { font-family: var(--mono); font-size: 22px; font-weight: 500; color: var(--text); }
+  .ring-sub { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+
+  /* ETF cards */
+  .etf-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s; }
+  .etf-card:active { border-color: var(--border2); }
+  .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .ticker { font-family: var(--mono); font-size: 16px; font-weight: 500; color: var(--text); }
+  .badge { font-size: 11px; font-family: var(--mono); padding: 3px 9px; border-radius: 20px; }
+  .badge-ok { background: var(--green-dim); color: var(--green); }
+  .badge-warn { background: var(--amber-dim); color: var(--amber); }
+  .badge-done { background: var(--blue-dim); color: var(--blue); }
+  .card-bar-bg { height: 3px; background: var(--surface2); border-radius: 2px; margin-bottom: 8px; overflow: hidden; }
+  .card-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+  .fill-ok { background: var(--green); }
+  .fill-warn { background: var(--amber); }
+  .fill-done { background: var(--blue); }
+  .card-bottom { display: flex; justify-content: space-between; font-size: 12px; }
+  .card-spent { color: var(--text2); font-family: var(--mono); }
+  .card-remaining { color: var(--text3); font-family: var(--mono); }
+
+  /* Buy screen */
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .screen-header { padding: 52px 20px 16px; display: flex; align-items: center; gap: 12px; }
+  .back-btn { background: none; border: none; color: var(--text2); font-size: 22px; cursor: pointer; line-height: 1; padding: 4px 4px 4px 0; }
+  .screen-title { font-size: 18px; font-weight: 500; color: var(--text); }
+
+  .form-wrap { padding: 0 16px; padding-bottom: 90px; }
+  .form-section { margin-bottom: 24px; }
+  .form-section-label { font-size: 11px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+
+  /* Suggestion chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { padding: 8px 14px; border: 0.5px solid var(--border2); border-radius: 20px; font-size: 13px; font-family: var(--mono); color: var(--text2); cursor: pointer; background: transparent; transition: all 0.15s; white-space: nowrap; }
+  .chip:active, .chip.selected { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+  .chip-remaining { font-size: 11px; color: var(--text3); margin-left: 4px; }
+
+  /* Form fields */
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; font-family: var(--mono); color: var(--text3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .field select, .field input { width: 100%; background: var(--surface); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 13px 14px; font-size: 16px; color: var(--text); font-family: var(--mono); outline: none; appearance: none; -webkit-appearance: none; }
+  .field select:focus, .field input:focus { border-color: rgba(255,255,255,0.3); }
+  .field input::placeholder { color: var(--text3); }
+
+  /* Confirm */
+  .confirm-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+  .confirm-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 0.5px solid var(--border); font-size: 14px; }
+  .confirm-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .confirm-row.total { padding-top: 12px; margin-top: 4px; }
+  .confirm-key { color: var(--text3); font-family: var(--mono); font-size: 12px; }
+  .confirm-val { color: var(--text); font-family: var(--mono); font-weight: 500; }
+
+  /* Buttons */
+  .btn { width: 100%; padding: 15px; border-radius: var(--radius); font-size: 15px; font-weight: 500; cursor: pointer; border: 0.5px solid var(--border2); background: transparent; color: var(--text); font-family: var(--font); transition: all 0.15s; }
+  .btn:active { transform: scale(0.98); opacity: 0.8; }
+  .btn-primary { background: var(--accent); color: #0a0a0a; border-color: var(--accent); }
+  .btn-row { display: flex; gap: 10px; }
+  .btn-row .btn { flex: 1; }
+
+  /* History */
+  .tx-list { padding-bottom: 90px; }
+  .tx-month-group { margin-bottom: 24px; }
+  .tx-month-label { font-size: 11px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 16px; margin-bottom: 8px; }
+  .tx-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 0.5px solid var(--border); }
+  .tx-left { display: flex; flex-direction: column; gap: 3px; }
+  .tx-ticker { font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--text); }
+  .tx-date { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+  .tx-amt { font-family: var(--mono); font-size: 14px; color: var(--text); }
+  .tx-delete { background: none; border: none; color: var(--text3); font-size: 18px; cursor: pointer; padding: 4px 4px 4px 12px; }
+  .empty-state { padding: 48px 16px; text-align: center; color: var(--text3); font-family: var(--mono); font-size: 13px; }
+
+  /* Settings */
+  .settings-wrap { padding: 0 16px; padding-bottom: 90px; }
+  .settings-section { margin-bottom: 28px; }
+  .settings-title { font-size: 11px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .settings-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .settings-row { display: flex; align-items: center; padding: 13px 16px; border-bottom: 0.5px solid var(--border); gap: 12px; }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-ticker { font-family: var(--mono); font-size: 14px; font-weight: 500; width: 52px; color: var(--text); flex-shrink: 0; }
+  .settings-input { flex: 1; background: transparent; border: none; font-size: 15px; font-family: var(--mono); color: var(--text); outline: none; text-align: right; }
+  .settings-input::placeholder { color: var(--text3); }
+  .settings-currency { font-family: var(--mono); font-size: 13px; color: var(--text3); }
+  .total-row { display: flex; justify-content: space-between; padding: 14px 16px; background: var(--surface2); border-radius: var(--radius); font-family: var(--mono); font-size: 13px; }
+  .total-row span:first-child { color: var(--text3); }
+  .total-row span:last-child { color: var(--text); font-weight: 500; }
+  .danger-btn { width: 100%; padding: 13px; border: 0.5px solid rgba(248,113,113,0.25); border-radius: var(--radius); background: transparent; color: var(--red); font-family: var(--mono); font-size: 13px; cursor: pointer; margin-top: 8px; }
+  .danger-btn:active { background: var(--red-dim); }
+
+  /* Nav */
+  .nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; display: flex; background: rgba(10,10,10,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 0.5px solid var(--border); padding-bottom: env(safe-area-inset-bottom, 0); }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0; cursor: pointer; border: none; background: none; color: var(--text3); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; transition: color 0.15s; }
+  .nav-item.active { color: var(--text); }
+  .nav-icon { font-size: 20px; line-height: 1; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 0; }
+
+  /* Toast */
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px); background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 10px 20px; font-family: var(--mono); font-size: 13px; color: var(--text); transition: transform 0.3s ease; z-index: 100; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<!-- Dashboard screen -->
+<div id="screen-dashboard" class="screen active">
+  <div class="app-header">
+    <span class="app-title">ETF Tracker</span>
+    <div class="month-nav">
+      <button id="prev-month" onclick="prevMonth()">‹</button>
+      <span class="month-label" id="month-label">—</span>
+      <button id="next-month" onclick="nextMonth()">›</button>
+    </div>
+  </div>
+  <div class="content" id="dashboard-content"></div>
+</div>
+
+<!-- Buy screen -->
+<div id="screen-buy" class="screen">
+  <div class="screen-header">
+    <button class="back-btn" onclick="goScreen('dashboard')">‹</button>
+    <span class="screen-title">Record buy</span>
+  </div>
+  <div class="form-wrap">
+    <div class="form-section">
+      <div class="form-section-label">Needs attention</div>
+      <div class="chips" id="suggestion-chips"></div>
+    </div>
+    <div class="field">
+      <label>ETF</label>
+      <select id="buy-ticker"></select>
+    </div>
+    <div class="field">
+      <label>Amount ($AUD)</label>
+      <input type="number" id="buy-amount" inputmode="decimal" placeholder="0.00" step="0.01" />
+    </div>
+    <button class="btn btn-primary" onclick="reviewBuy()" style="margin-top:8px">Review →</button>
+  </div>
+</div>
+
+<!-- Confirm screen -->
+<div id="screen-confirm" class="screen">
+  <div class="screen-header">
+    <button class="back-btn" onclick="goScreen('buy')">‹</button>
+    <span class="screen-title">Confirm</span>
+  </div>
+  <div class="form-wrap">
+    <div class="confirm-card" id="confirm-details"></div>
+    <div class="btn-row">
+      <button class="btn" onclick="goScreen('buy')">Edit</button>
+      <button class="btn btn-primary" onclick="saveBuy()">Confirm ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- History screen -->
+<div id="screen-history" class="screen">
+  <div class="screen-header">
+    <span class="screen-title">History</span>
+  </div>
+  <div class="tx-list" id="tx-list"></div>
+</div>
+
+<!-- Settings screen -->
+<div id="screen-settings" class="screen">
+  <div class="screen-header">
+    <span class="screen-title">Targets</span>
+  </div>
+  <div class="settings-wrap" id="settings-content"></div>
+</div>
+
+<!-- Nav -->
+<nav class="nav">
+  <button class="nav-item active" id="nav-dashboard" onclick="goScreen('dashboard')">
+    <span class="nav-icon">◎</span>Overview
+  </button>
+  <button class="nav-item" id="nav-buy" onclick="goScreen('buy')">
+    <span class="nav-icon">+</span>Buy
+  </button>
+  <button class="nav-item" id="nav-history" onclick="goScreen('history')">
+    <span class="nav-icon">≡</span>History
+  </button>
+  <button class="nav-item" id="nav-settings" onclick="goScreen('settings')">
+    <span class="nav-icon">◈</span>Targets
+  </button>
+</nav>
+
+<script>
+const TICKERS = ['IVV','VGE','QQQM','IWLD','VHY','GOLD'];
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ── State ──────────────────────────────────────────────────────────────────
+function defaultState() {
+  const n = new Date();
+  return {
+    targets: { IVV:600, VGE:400, QQQM:500, IWLD:400, VHY:300, GOLD:300 },
+    transactions: [],
+    viewMonth: { y: n.getFullYear(), m: n.getMonth() }
+  };
+}
+let state;
+try {
+  const raw = localStorage.getItem('etf_v2');
+  state = raw ? JSON.parse(raw) : defaultState();
+} catch(e) { state = defaultState(); }
+
+function save() {
+  try { localStorage.setItem('etf_v2', JSON.stringify(state)); } catch(e) {}
+}
+
+let pendingBuy = null;
+let currentScreen = 'dashboard';
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function fmt(n) { return '$' + Math.round(n).toLocaleString('en-AU'); }
+function monthKey(y, m) { return `${y}-${String(m+1).padStart(2,'0')}`; }
+function pct(s,t) { return t ? Math.min(Math.round(s/t*100), 100) : 0; }
+
+function spentMap(y, m) {
+  const key = monthKey(y, m);
+  const map = {};
+  TICKERS.forEach(t => map[t] = 0);
+  state.transactions.filter(tx => tx.month === key).forEach(tx => { map[tx.ticker] = (map[tx.ticker]||0) + tx.amount; });
+  return map;
+}
+
+function totalTarget() { return Object.values(state.targets).reduce((a,b)=>a+b,0); }
+
+function statusOf(spent, target) {
+  const p = target ? spent/target : 0;
+  if (p >= 1) return 'done';
+  if (p >= 0.65) return 'warn';
+  return 'ok';
+}
+
+function badgeLabel(st) { return st === 'done' ? 'Done' : st === 'warn' ? 'On track' : 'Buy'; }
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── Screen routing ───────────────────────────────────────────────────────────
+function goScreen(s) {
+  ['dashboard','buy','confirm','history','settings'].forEach(id => {
+    document.getElementById('screen-'+id).classList.toggle('active', id === s);
+    const nav = document.getElementById('nav-'+id);
+    if (nav) nav.classList.toggle('active', id === s);
+  });
+  currentScreen = s;
+  if (s === 'dashboard') renderDashboard();
+  if (s === 'buy') renderBuy();
+  if (s === 'confirm') renderConfirm();
+  if (s === 'history') renderHistory();
+  if (s === 'settings') renderSettings();
+}
+
+// ── Dashboard ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const { y, m } = state.viewMonth;
+  const now = new Date();
+  document.getElementById('month-label').textContent = MONTHS_SHORT[m] + ' ' + y;
+  document.getElementById('next-month').disabled = (y === now.getFullYear() && m === now.getMonth());
+
+  const spent = spentMap(y, m);
+  const totSpent = Object.values(spent).reduce((a,b)=>a+b,0);
+  const totTarget = totalTarget();
+  const overall = pct(totSpent, totTarget);
+  const remaining = Math.max(0, totTarget - totSpent);
+
+  // Ring circumference
+  const R = 46, C = 2 * Math.PI * R;
+  const dash = (overall / 100) * C;
+  let ringColor = overall >= 100 ? '#60a5fa' : overall >= 65 ? '#fbbf24' : '#4ade80';
+
+  const cards = TICKERS.map(t => {
+    const s = spent[t], tg = state.targets[t];
+    const st = statusOf(s, tg);
+    const p = pct(s, tg);
+    const rem = Math.max(0, tg - s);
+    return `<div class="etf-card" onclick="prefillBuy('${t}')">
+      <div class="card-top">
+        <span class="ticker">${t}</span>
+        <span class="badge badge-${st}">${badgeLabel(st)}</span>
+      </div>
+      <div class="card-bar-bg"><div class="card-bar-fill fill-${st}" style="width:${p}%"></div></div>
+      <div class="card-bottom">
+        <span class="card-spent">${fmt(s)} spent</span>
+        <span class="card-remaining">${rem > 0 ? fmt(rem)+' left' : 'target met'}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('dashboard-content').innerHTML = `
+    <div class="summary-strip">
+      <div class="stat">
+        <div class="stat-label">Invested</div>
+        <div class="stat-val">${fmt(totSpent)}</div>
+        <div class="stat-sub">of ${fmt(totTarget)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Remaining</div>
+        <div class="stat-val">${fmt(remaining)}</div>
+        <div class="stat-sub">${overall}% complete</div>
+      </div>
+    </div>
+    <div class="ring-wrap">
+      <div class="ring-container">
+        <svg width="110" height="110" viewBox="0 0 110 110">
+          <circle cx="55" cy="55" r="${R}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="6"/>
+          <circle cx="55" cy="55" r="${R}" fill="none" stroke="${ringColor}" stroke-width="6"
+            stroke-dasharray="${dash.toFixed(1)} ${C.toFixed(1)}" stroke-linecap="round"/>
+        </svg>
+        <div class="ring-center">
+          <span class="ring-pct">${overall}%</span>
+          <span class="ring-sub">this month</span>
+        </div>
+      </div>
+    </div>
+    ${cards}
+  `;
+}
+
+function prevMonth() {
+  let { y, m } = state.viewMonth;
+  m--; if (m < 0) { m = 11; y--; }
+  state.viewMonth = { y, m };
+  save();
+  renderDashboard();
+}
+
+function nextMonth() {
+  const now = new Date();
+  let { y, m } = state.viewMonth;
+  if (y === now.getFullYear() && m === now.getMonth()) return;
+  m++; if (m > 11) { m = 0; y++; }
+  state.viewMonth = { y, m };
+  save();
+  renderDashboard();
+}
+
+// ── Buy ──────────────────────────────────────────────────────────────────────
+let selectedTicker = null;
+
+function renderBuy() {
+  const { y, m } = state.viewMonth;
+  const spent = spentMap(y, m);
+
+  // suggestions sorted by remaining
+  const suggestions = TICKERS
+    .map(t => ({ ticker: t, rem: Math.max(0, state.targets[t] - spent[t]) }))
+    .filter(x => x.rem > 0)
+    .sort((a,b) => b.rem - a.rem)
+    .slice(0, 4);
+
+  const sel = document.getElementById('buy-ticker');
+  sel.innerHTML = TICKERS.map(t => `<option value="${t}">${t}</option>`).join('');
+  if (selectedTicker) sel.value = selectedTicker;
+  else if (suggestions[0]) sel.value = suggestions[0].ticker;
+
+  const chips = suggestions.map(s =>
+    `<button class="chip" onclick="selectChip('${s.ticker}')">${s.ticker}<span class="chip-remaining"> ${fmt(s.rem)}</span></button>`
+  ).join('');
+  document.getElementById('suggestion-chips').innerHTML = chips;
+
+  // highlight matching chip
+  highlightChip(sel.value);
+  sel.addEventListener('change', () => highlightChip(sel.value));
+
+  document.getElementById('buy-amount').value = '';
+}
+
+function prefillBuy(ticker) {
+  selectedTicker = ticker;
+  goScreen('buy');
+}
+
+function selectChip(ticker) {
+  document.getElementById('buy-ticker').value = ticker;
+  highlightChip(ticker);
+}
+
+function highlightChip(ticker) {
+  document.querySelectorAll('#suggestion-chips .chip').forEach(c => {
+    c.classList.toggle('selected', c.textContent.trim().startsWith(ticker));
+  });
+}
+
+function reviewBuy() {
+  const ticker = document.getElementById('buy-ticker').value;
+  const amt = parseFloat(document.getElementById('buy-amount').value);
+  if (!ticker || !amt || amt <= 0) { toast('Enter an amount to continue'); return; }
+  pendingBuy = { ticker, amount: amt };
+  goScreen('confirm');
+}
+
+function renderConfirm() {
+  if (!pendingBuy) return;
+  const { y, m } = state.viewMonth;
+  const spent = spentMap(y, m);
+  const s = spent[pendingBuy.ticker];
+  const tg = state.targets[pendingBuy.ticker];
+  const newSpent = s + pendingBuy.amount;
+  const newRem = Math.max(0, tg - newSpent);
+
+  document.getElementById('confirm-details').innerHTML = `
+    <div class="confirm-row"><span class="confirm-key">ETF</span><span class="confirm-val">${pendingBuy.ticker}</span></div>
+    <div class="confirm-row"><span class="confirm-key">Amount</span><span class="confirm-val">${fmt(pendingBuy.amount)}</span></div>
+    <div class="confirm-row"><span class="confirm-key">Month</span><span class="confirm-val">${MONTHS_SHORT[m]} ${y}</span></div>
+    <div class="confirm-row"><span class="confirm-key">Previously spent</span><span class="confirm-val">${fmt(s)}</span></div>
+    <div class="confirm-row"><span class="confirm-key">Progress after</span><span class="confirm-val">${pct(newSpent,tg)}%</span></div>
+    <div class="confirm-row total"><span class="confirm-key">Remaining after</span><span class="confirm-val">${newRem > 0 ? fmt(newRem) : '✓ target met'}</span></div>
+  `;
+}
+
+function saveBuy() {
+  if (!pendingBuy) return;
+  const now = new Date();
+  const { y, m } = state.viewMonth;
+  state.transactions.push({
+    ticker: pendingBuy.ticker,
+    amount: pendingBuy.amount,
+    month: monthKey(y, m),
+    date: now.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }),
+    id: Date.now()
+  });
+  save();
+  pendingBuy = null;
+  selectedTicker = null;
+  toast('Buy recorded ✓');
+  goScreen('dashboard');
+}
+
+// ── History ──────────────────────────────────────────────────────────────────
+function renderHistory() {
+  const txs = [...state.transactions].reverse();
+  if (txs.length === 0) {
+    document.getElementById('tx-list').innerHTML = '<div class="empty-state">No buys recorded yet.</div>';
+    return;
+  }
+
+  // group by month
+  const groups = {};
+  txs.forEach(tx => {
+    if (!groups[tx.month]) groups[tx.month] = [];
+    groups[tx.month].push(tx);
+  });
+
+  let html = '';
+  Object.keys(groups).sort().reverse().forEach(mk => {
+    const [y, mo] = mk.split('-').map(Number);
+    const label = MONTHS_SHORT[mo-1] + ' ' + y;
+    const monthTotal = groups[mk].reduce((a,tx) => a+tx.amount, 0);
+    html += `<div class="tx-month-group">
+      <div class="tx-month-label">${label} · ${fmt(monthTotal)}</div>
+      ${groups[mk].map(tx => `
+        <div class="tx-item" id="tx-${tx.id}">
+          <div class="tx-left">
+            <span class="tx-ticker">${tx.ticker}</span>
+            <span class="tx-date">${tx.date}</span>
+          </div>
+          <span class="tx-amt">${fmt(tx.amount)}</span>
+          <button class="tx-delete" onclick="deleteTx(${tx.id})" aria-label="Delete">×</button>
+        </div>`).join('')}
+    </div>`;
+  });
+  document.getElementById('tx-list').innerHTML = html;
+}
+
+function deleteTx(id) {
+  if (!confirm('Remove this buy?')) return;
+  state.transactions = state.transactions.filter(tx => tx.id !== id);
+  save();
+  renderHistory();
+}
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+function renderSettings() {
+  const rows = TICKERS.map(t => `
+    <div class="settings-row">
+      <span class="settings-ticker">${t}</span>
+      <span class="settings-currency">$</span>
+      <input class="settings-input" type="number" inputmode="decimal" value="${state.targets[t]||''}"
+        placeholder="0" onchange="updateTarget('${t}',this.value)" oninput="refreshTotal()" />
+    </div>`).join('');
+
+  const { y, m } = state.viewMonth;
+  document.getElementById('settings-content').innerHTML = `
+    <div class="settings-section">
+      <div class="settings-title">Monthly $ target per ETF</div>
+      <div class="settings-card">${rows}</div>
+    </div>
+    <div class="settings-section">
+      <div id="total-display" class="total-row">
+        <span>Total per month</span><span>${fmt(totalTarget())}</span>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-title">This month</div>
+      <button class="danger-btn" onclick="resetMonth()">Clear ${MONTHS_SHORT[m]} ${y} buys</button>
+    </div>
+  `;
+}
+
+function updateTarget(ticker, val) {
+  state.targets[ticker] = parseFloat(val) || 0;
+  save();
+  refreshTotal();
+}
+
+function refreshTotal() {
+  const el = document.getElementById('total-display');
+  if (el) el.innerHTML = `<span>Total per month</span><span>${fmt(totalTarget())}</span>`;
+}
+
+function resetMonth() {
+  const { y, m } = state.viewMonth;
+  const key = monthKey(y, m);
+  if (!confirm(`Clear all buys for ${MONTHS_SHORT[m]} ${y}?`)) return;
+  state.transactions = state.transactions.filter(tx => tx.month !== key);
+  save();
+  toast('Month cleared');
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+renderDashboard();
+</script>
+</body>
+</html>
