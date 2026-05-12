@@ -67,7 +67,12 @@
   .ring-sub { font-size: 10px; color: var(--text3); font-family: var(--mono); }
 
   /* ETF cards */
-  .etf-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s; }
+  .swipe-wrap { position: relative; overflow: hidden; border-radius: var(--radius); margin-bottom: 10px; }
+  .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 90px; background: var(--red); display: flex; align-items: center; justify-content: center; border-radius: var(--radius); }
+  .swipe-delete-action { background: none; border: none; color: #fff; font-family: var(--mono); font-size: 13px; font-weight: 500; cursor: pointer; padding: 0 16px; height: 100%; width: 100%; }
+  .swipe-item { position: relative; transition: transform 0.25s ease; will-change: transform; touch-action: pan-y; background: var(--surface); border-radius: var(--radius); }
+  .swipe-item.swiped { transform: translateX(-90px); }
+  .etf-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; cursor: pointer; transition: border-color 0.15s, transform 0.25s ease; }
   .etf-card:active { border-color: var(--border2); }
   .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .ticker { font-family: var(--mono); font-size: 16px; font-weight: 500; color: var(--text); }
@@ -140,8 +145,8 @@
   .tx-edit:active { color: var(--orange); }
   .cur-pick-btn { flex: 1; padding: 10px; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); background: transparent; color: var(--text2); font-family: var(--mono); font-size: 13px; cursor: pointer; }
   .cur-pick-active { border-color: var(--orange); color: var(--orange); background: var(--orange-dim); }
-  .alloc-pct { font-family: var(--mono); font-size: 12px; color: var(--text3); min-width: 34px; text-align: right; flex-shrink: 0; }
-  .cur-toggle { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 4px; cursor: pointer; border: 0.5px solid var(--border2); background: transparent; flex-shrink: 0; font-weight: 500; }
+  .alloc-pct { font-family: var(--mono); font-size: 11px; color: var(--text3); min-width: 30px; text-align: right; flex-shrink: 0; }
+  .cur-toggle { font-family: var(--mono); font-size: 10px; padding: 3px 7px; border-radius: 4px; cursor: pointer; border: 0.5px solid var(--border2); background: transparent; flex-shrink: 0; font-weight: 500; }
   .cur-aud { color: var(--text2); }
   .cur-usd { color: var(--orange); border-color: var(--orange); background: var(--orange-dim); }
   .tx-delete { background: none; border: none; color: var(--text3); font-size: 18px; cursor: pointer; padding: 4px 4px 4px 12px; }
@@ -150,14 +155,14 @@
   .export-btn:active { background: var(--surface2); color: var(--text); }
 
   /* Settings */
-  .settings-wrap { padding: 0 16px; padding-bottom: 90px; }
+  .settings-wrap { padding: 0 14px; padding-bottom: 90px; }
   .settings-section { margin-bottom: 28px; }
   .settings-title { font-size: 11px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
-  .settings-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  .settings-row { display: flex; align-items: center; padding: 13px 16px; border-bottom: 0.5px solid var(--border); gap: 12px; }
+  .settings-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; width: 100%; }
+  .settings-row { display: flex; align-items: center; padding: 11px 14px; border-bottom: 0.5px solid var(--border); gap: 8px; background: var(--surface); }
   .settings-row:last-child { border-bottom: none; }
-  .settings-ticker { font-family: var(--mono); font-size: 14px; font-weight: 500; width: 52px; color: var(--text); flex-shrink: 0; }
-  .settings-input { flex: 1; background: transparent; border: none; font-size: 15px; font-family: var(--mono); color: var(--text); outline: none; text-align: right; }
+  .settings-ticker { font-family: var(--mono); font-size: 13px; font-weight: 500; width: 44px; color: var(--text); flex-shrink: 0; }
+  .settings-input { flex: 1; min-width: 0; max-width: 90px; background: transparent; border: none; font-size: 14px; font-family: var(--mono); color: var(--text); outline: none; text-align: right; }
   .settings-input::placeholder { color: var(--text3); }
   .settings-currency { font-family: var(--mono); font-size: 13px; color: var(--text3); }
   .total-row { display: flex; justify-content: space-between; padding: 14px 16px; background: var(--surface2); border-radius: var(--radius); font-family: var(--mono); font-size: 13px; }
@@ -268,9 +273,15 @@
 <div id="screen-history" class="screen">
   <div class="screen-header" style="justify-content:space-between">
     <span class="screen-title">History</span>
-    <button class="export-btn" onclick="exportCSV()" aria-label="Export CSV">
-      <span style="font-size:15px">↓</span> CSV
-    </button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <label class="export-btn" for="csv-upload" aria-label="Import CSV" title="Import CSV">
+        <span style="font-size:15px">↑</span> Import
+      </label>
+      <input type="file" id="csv-upload" accept=".csv" style="display:none" onchange="importCSV(event)" />
+      <button class="export-btn" onclick="exportCSV()" aria-label="Export CSV">
+        <span style="font-size:15px">↓</span> Export
+      </button>
+    </div>
   </div>
   <div class="tx-list" id="tx-list"></div>
 </div>
@@ -419,19 +430,25 @@ function renderDashboard() {
     const st = statusOf(s, tg);
     const p = pct(s, tg);
     const rem = Math.max(0, tg - s);
-    return `<div class="etf-card" onclick="prefillBuy('${t}')">
-      <div class="card-top">
-        <span class="ticker">${t}</span>
-        <span class="badge badge-${st}">${badgeLabel(st)}</span>
+    return `<div class="swipe-wrap" id="sw-${t}">
+      <div class="swipe-delete-bg">
+        <button class="swipe-delete-action" onclick="deleteETFConfirm('${t}')">Delete</button>
       </div>
-      <div class="card-bar-bg"><div class="card-bar-fill fill-${st}" style="width:${p}%"></div></div>
-      <div class="card-bottom">
-        <span class="card-spent">${fmt(s)} spent</span>
-        <span class="card-remaining">${rem > 0 ? fmt(rem)+' left' : 'target met'}</span>
+      <div class="etf-card swipe-item" id="card-${t}" onclick="prefillBuy('${t}')" data-swipe-id="${t}" data-swipe-type="card">
+        <div class="card-top">
+          <span class="ticker">${t}</span>
+          <span class="badge badge-${st}">${badgeLabel(st)}</span>
+        </div>
+        <div class="card-bar-bg"><div class="card-bar-fill fill-${st}" style="width:${p}%"></div></div>
+        <div class="card-bottom">
+          <span class="card-spent">${fmt(s)} spent</span>
+          <span class="card-remaining">${rem > 0 ? fmt(rem)+' left' : 'target met'}</span>
+        </div>
       </div>
     </div>`;
   }).join('');
 
+  closeAllSwipes();
   document.getElementById('dashboard-content').innerHTML = `
     <div class="summary-strip">
       <div class="stat">
@@ -461,6 +478,7 @@ function renderDashboard() {
     ${cards}
     <button class="clear-month-btn" onclick="resetMonth()" style="margin-top:4px">Clear ${MONTHS_SHORT[m]} ${y} buys</button>
   `;
+  setTimeout(initSwipe, 0);
 }
 
 function prevMonth() {
@@ -753,6 +771,64 @@ function exportCSV() {
   toast('CSV downloaded ✓');
 }
 
+function importCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) { toast('CSV appears empty'); return; }
+
+    // Parse header to find column positions
+    const header = lines[0].split(',').map(h => h.replace(/"/g,'').trim().toLowerCase());
+    const col = name => header.indexOf(name);
+
+    const idCol      = col('record id');
+    const dateCol    = col('date');
+    const monthCol   = col('month');
+    const tickerCol  = col('etf');
+    const unitsCol   = col('units');
+    const amountCol  = col('amount');
+    const currencyCol= col('currency');
+
+    if (tickerCol === -1 || amountCol === -1) {
+      toast('Invalid CSV format'); return;
+    }
+
+    const parseCell = v => (v || '').replace(/"/g,'').trim();
+
+    let imported = 0, skipped = 0;
+    const existingIds = new Set(state.transactions.map(tx => String(tx.id)));
+
+    for (let i = 1; i < lines.length; i++) {
+      const cells = lines[i].match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g) || lines[i].split(',');
+      const get = idx => idx >= 0 ? parseCell(cells[idx] || '') : '';
+
+      const id      = get(idCol) || String(Date.now() + i);
+      const ticker  = get(tickerCol).toUpperCase();
+      const amount  = parseFloat(get(amountCol));
+      const units   = parseFloat(get(unitsCol)) || null;
+      const month   = get(monthCol);
+      const date    = get(dateCol);
+      const currency= get(currencyCol) || 'AUD';
+
+      if (!ticker || isNaN(amount) || amount <= 0) { skipped++; continue; }
+      if (existingIds.has(String(id))) { skipped++; continue; }
+
+      state.transactions.push({ id, ticker, amount, units, month, date, currency });
+      existingIds.add(String(id));
+      imported++;
+    }
+
+    save();
+    event.target.value = ''; // reset file input
+    renderHistory();
+    toast(`Imported ${imported} record${imported !== 1 ? 's' : ''}${skipped ? ', '+skipped+' skipped' : ''} ✓`);
+  };
+  reader.readAsText(file);
+}
+
 function deleteTx(id) {
   if (!confirm('Remove this buy?')) return;
   state.transactions = state.transactions.filter(tx => String(tx.id) !== String(id));
@@ -771,16 +847,21 @@ function renderSettings() {
     const tgt = state.targets[t] || 0;
     const allocPct = tot > 0 ? Math.round(tgt / tot * 100) : 0;
     return `
-    <div class="settings-row" id="srow-${t}">
-      <span class="settings-ticker">${t}</span>
-      <button class="cur-toggle ${cur === 'USD' ? 'cur-usd' : 'cur-aud'}" onclick="toggleCurrency('${t}')">${cur}</button>
-      <input class="settings-input" type="number" inputmode="decimal" value="${tgt||''}"
-        placeholder="0" onchange="updateTarget('${t}',this.value)" oninput="refreshTotal()" />
-      <span class="alloc-pct" id="pct-${t}">${allocPct}%</span>
-      <button class="etf-delete-btn" onclick="deleteETF('${t}')" aria-label="Remove ${t}">×</button>
+    <div class="swipe-wrap" id="ssw-${t}">
+      <div class="swipe-delete-bg">
+        <button class="swipe-delete-action" onclick="deleteETF('${t}')">Delete</button>
+      </div>
+      <div class="settings-row swipe-item" id="srow-${t}" data-swipe-id="${t}" data-swipe-type="setting">
+        <span class="settings-ticker">${t}</span>
+        <button class="cur-toggle ${cur === 'USD' ? 'cur-usd' : 'cur-aud'}" onclick="toggleCurrency('${t}')">${cur}</button>
+        <input class="settings-input" type="number" inputmode="decimal" value="${tgt||''}"
+          placeholder="0" onchange="updateTarget('${t}',this.value)" oninput="refreshTotal()" />
+        <span class="alloc-pct" id="pct-${t}">${allocPct}%</span>
+      </div>
     </div>`;
   }).join('');
 
+  closeAllSwipes();
   document.getElementById('settings-content').innerHTML = `
     <div class="settings-section">
       <div class="settings-title">Monthly $ target per ETF</div>
@@ -808,6 +889,7 @@ function renderSettings() {
       <button class="danger-btn" onclick="resetTargets()">Reset all targets to $0</button>
     </div>
   `;
+  setTimeout(initSwipe, 0);
 }
 
 function addETF() {
@@ -834,6 +916,11 @@ function toggleCurrency(ticker) {
   state.currencies[ticker] = state.currencies[ticker] === 'USD' ? 'AUD' : 'USD';
   save();
   renderSettings();
+}
+
+function deleteETFConfirm(ticker) {
+  resetSwipe(ticker, 'card');
+  deleteETF(ticker);
 }
 
 function deleteETF(ticker) {
@@ -883,6 +970,88 @@ function resetTargets() {
   save();
   toast('Targets reset to $0');
   renderSettings();
+}
+
+
+// ── Swipe to delete ──────────────────────────────────────────────────────────
+let swipeState = {};
+
+function initSwipe() {
+  document.querySelectorAll('.swipe-item').forEach(el => {
+    const id = el.dataset.swipeId;
+    const type = el.dataset.swipeType;
+    let startX = 0, startY = 0, isDragging = false, isSwiped = false;
+
+    el.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      isDragging = false;
+    }, { passive: true });
+
+    el.addEventListener('touchmove', e => {
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      if (!isDragging && Math.abs(dy) > Math.abs(dx)) return; // vertical scroll
+      isDragging = true;
+      if (dx < 0) {
+        const clamped = Math.max(dx, -90);
+        el.style.transform = `translateX(${clamped}px)`;
+        el.style.transition = 'none';
+      } else if (isSwiped && dx > 0) {
+        const clamped = Math.min(-90 + dx, 0);
+        el.style.transform = `translateX(${clamped}px)`;
+        el.style.transition = 'none';
+      }
+    }, { passive: true });
+
+    el.addEventListener('touchend', e => {
+      if (!isDragging) return;
+      el.style.transition = 'transform 0.25s ease';
+      const dx = e.changedTouches[0].clientX - startX;
+      if (!isSwiped && dx < -40) {
+        el.style.transform = 'translateX(-90px)';
+        isSwiped = true;
+        closeOtherSwipes(id, type);
+      } else if (isSwiped && dx > 40) {
+        el.style.transform = 'translateX(0)';
+        isSwiped = false;
+      } else {
+        el.style.transform = isSwiped ? 'translateX(-90px)' : 'translateX(0)';
+      }
+      swipeState[id + type] = isSwiped;
+    }, { passive: true });
+  });
+
+  // tap outside to close
+  document.addEventListener('touchstart', e => {
+    if (!e.target.closest('.swipe-item') && !e.target.closest('.swipe-delete-bg')) {
+      closeAllSwipes();
+    }
+  }, { passive: true });
+}
+
+function closeOtherSwipes(exceptId, exceptType) {
+  document.querySelectorAll('.swipe-item').forEach(el => {
+    if (el.dataset.swipeId !== exceptId || el.dataset.swipeType !== exceptType) {
+      el.style.transition = 'transform 0.25s ease';
+      el.style.transform = 'translateX(0)';
+      swipeState[el.dataset.swipeId + el.dataset.swipeType] = false;
+    }
+  });
+}
+
+function closeAllSwipes() {
+  document.querySelectorAll('.swipe-item').forEach(el => {
+    el.style.transition = 'transform 0.25s ease';
+    el.style.transform = 'translateX(0)';
+  });
+  swipeState = {};
+}
+
+function resetSwipe(id, type) {
+  const el = document.querySelector(`[data-swipe-id="${id}"][data-swipe-type="${type}"]`);
+  if (el) { el.style.transform = 'translateX(0)'; }
+  swipeState[id + type] = false;
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
