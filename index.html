@@ -181,6 +181,31 @@
   .add-etf-btn { padding: 12px 16px; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-family: var(--mono); font-size: 13px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
   .add-etf-btn:active { opacity: 0.7; }
 
+  /* Trade days bar */
+  .trade-days-bar { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border: 0.5px solid var(--border); border-left: 2px solid var(--orange); border-radius: var(--radius); padding: 10px 16px; margin-bottom: 16px; }
+  .trade-days-label { font-family: var(--mono); font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+  .trade-days-count { font-family: var(--mono); font-size: 22px; font-weight: 500; color: var(--text); }
+
+  /* History view toggle */
+  .view-toggle { display: flex; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); overflow: hidden; }
+  .view-toggle-btn { background: transparent; border: none; padding: 6px 10px; font-size: 14px; color: var(--text3); cursor: pointer; }
+  .view-toggle-btn.active { background: var(--surface2); color: var(--text); }
+
+  /* Calendar */
+  .cal-month-nav { display: flex; justify-content: space-between; align-items: center; padding: 4px 0 12px; }
+  .cal-month-title { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text); }
+  .cal-month-total { font-family: var(--mono); font-size: 13px; color: var(--text2); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 16px; }
+  .cal-hdr { font-family: var(--mono); font-size: 10px; color: var(--text3); text-align: center; padding: 4px 0; }
+  .cal-cell { min-height: 44px; border-radius: 6px; display: flex; flex-direction: column; align-items: center; padding: 4px 2px; position: relative; cursor: default; }
+  .cal-cell.cal-has-tx { background: var(--orange-dim); cursor: pointer; }
+  .cal-cell.cal-today .cal-day-num { background: var(--orange); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+  .cal-cell.cal-weekend .cal-day-num { color: var(--text3); }
+  .cal-day-num { font-family: var(--mono); font-size: 12px; color: var(--text2); width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+  .cal-dots { display: flex; gap: 2px; margin-top: 2px; flex-wrap: wrap; justify-content: center; }
+  .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .cal-detail-label { font-family: var(--mono); font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 0 4px; border-top: 0.5px solid var(--border); margin-bottom: 4px; }
+
   /* Nav */
   .nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; display: flex; background: rgba(250,249,245,0.94); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 0.5px solid var(--border); padding-bottom: env(safe-area-inset-bottom, 0); }
   .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0; cursor: pointer; border: none; background: none; color: var(--text3); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; transition: color 0.15s; }
@@ -273,8 +298,12 @@
 <div id="screen-history" class="screen">
   <div class="screen-header" style="justify-content:space-between">
     <span class="screen-title">History</span>
-    <div style="display:flex;gap:8px;align-items:center">
-      <label class="export-btn" for="csv-upload" aria-label="Import CSV" title="Import CSV">
+    <div style="display:flex;gap:6px;align-items:center">
+      <div class="view-toggle">
+        <button id="toggle-list" class="view-toggle-btn active" onclick="setHistoryView('list')" aria-label="List view">☰</button>
+        <button id="toggle-cal" class="view-toggle-btn" onclick="setHistoryView('calendar')" aria-label="Calendar view">⊞</button>
+      </div>
+      <label class="export-btn" for="csv-upload" aria-label="Import CSV">
         <span style="font-size:15px">↑</span> Import
       </label>
       <input type="file" id="csv-upload" accept=".csv" style="display:none" onchange="importCSV(event)" />
@@ -322,7 +351,8 @@ function defaultState() {
     targets: { IVV:600, VGE:400, QQQM:500, IWLD:400, VHY:300, GOLD:300 },
     currencies: { IVV:'AUD', VGE:'AUD', QQQM:'USD', IWLD:'AUD', VHY:'AUD', GOLD:'AUD' },
     transactions: [],
-    viewMonth: { y: n.getFullYear(), m: n.getMonth() }
+    viewMonth: { y: n.getFullYear(), m: n.getMonth() },
+    historyView: 'list'
   };
 }
 let state;
@@ -363,6 +393,26 @@ function generateId() {
   );
   const seq = String(existing.length + 1).padStart(3,'0');
   return datePart + '-' + seq;
+}
+
+function tradeDaysLeft(y, m) {
+  const now = new Date();
+  const isCurrentMonth = y === now.getFullYear() && m === now.getMonth();
+  const lastDay = new Date(y, m + 1, 0); // last day of month
+  const start = isCurrentMonth ? new Date(now.getFullYear(), now.getMonth(), now.getDate()) : new Date(y, m, 1);
+  let count = 0;
+  const cur = new Date(start);
+  while (cur <= lastDay) {
+    const dow = cur.getDay();
+    if (dow !== 0 && dow !== 6) count++; // skip Sat/Sun
+    cur.setDate(cur.getDate() + 1);
+  }
+  // subtract today if already past 4pm AEST (market closed) — approximate
+  if (isCurrentMonth) {
+    const hour = now.getHours();
+    if (hour >= 16) count = Math.max(0, count - 1);
+  }
+  return count;
 }
 
 function spentMap(y, m) {
@@ -449,6 +499,8 @@ function renderDashboard() {
   }).join('');
 
   closeAllSwipes();
+  const tradeDays = tradeDaysLeft(y, m);
+  const isCurrentMonth = y === now.getFullYear() && m === now.getMonth();
   document.getElementById('dashboard-content').innerHTML = `
     <div class="summary-strip">
       <div class="stat">
@@ -461,6 +513,10 @@ function renderDashboard() {
         <div class="stat-val">${fmt(remaining)}</div>
         <div class="stat-sub">${overall}% complete</div>
       </div>
+    </div>
+    <div class="trade-days-bar">
+      <span class="trade-days-label">Trade days ${isCurrentMonth ? 'remaining' : 'in month'}</span>
+      <span class="trade-days-count">${tradeDays} <span style="font-size:11px;font-weight:400;color:var(--text3)">days</span></span>
     </div>
     <div class="ring-wrap">
       <div class="ring-container">
@@ -699,7 +755,24 @@ function saveEdit() {
 }
 
 // ── History ──────────────────────────────────────────────────────────────────
+function setHistoryView(v) {
+  state.historyView = v;
+  save();
+  document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('toggle-' + v);
+  if (btn) btn.classList.add('active');
+  renderHistory();
+}
+
 function renderHistory() {
+  // sync toggle state
+  setTimeout(() => {
+    const v = state.historyView || 'list';
+    document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById('toggle-' + v);
+    if (btn) btn.classList.add('active');
+  }, 0);
+  if ((state.historyView || 'list') === 'calendar') { renderCalendar(); return; }
   const txs = [...state.transactions].reverse();
   if (txs.length === 0) {
     document.getElementById('tx-list').innerHTML = '<div class="empty-state">No buys recorded yet.</div>';
@@ -739,6 +812,91 @@ function renderHistory() {
     </div>`;
   });
   document.getElementById('tx-list').innerHTML = html;
+}
+
+function renderCalendar() {
+  const now = new Date();
+  const calY = now.getFullYear();
+  const calM = now.getMonth();
+
+  // Build tx lookup by date string "D Mon" for current month
+  const mk = monthKey(calY, calM);
+  const txsByDate = {};
+  state.transactions.filter(tx => tx.month === mk).forEach(tx => {
+    if (!txsByDate[tx.date]) txsByDate[tx.date] = [];
+    txsByDate[tx.date].push(tx);
+  });
+
+  const firstDay = new Date(calY, calM, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(calY, calM + 1, 0).getDate();
+  const today = now.getDate();
+
+  // Calendar grid
+  let cells = '';
+  // Day headers
+  ['S','M','T','W','T','F','S'].forEach(d => {
+    cells += `<div class="cal-hdr">${d}</div>`;
+  });
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) cells += `<div class="cal-cell"></div>`;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateObj = new Date(calY, calM, d);
+    const dateStr = dateObj.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+    const txs = txsByDate[dateStr] || [];
+    const isToday = d === today;
+    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+    const hasTx = txs.length > 0;
+    const dots = txs.slice(0, 3).map(tx => `<span class="cal-dot" style="background:var(--orange)"></span>`).join('');
+
+    cells += `<div class="cal-cell ${isToday ? 'cal-today' : ''} ${isWeekend ? 'cal-weekend' : ''} ${hasTx ? 'cal-has-tx' : ''}"
+      onclick="${hasTx ? `showCalDay('${dateStr}')` : ''}">
+      <span class="cal-day-num">${d}</span>
+      <div class="cal-dots">${dots}</div>
+    </div>`;
+  }
+
+  // Month total
+  const monthTxs = state.transactions.filter(tx => tx.month === mk);
+  const monthTotal = monthTxs.reduce((a,tx) => a + tx.amount, 0);
+
+  document.getElementById('tx-list').innerHTML = `
+    <div style="padding:0 16px">
+      <div class="cal-month-nav">
+        <span class="cal-month-title">${MONTHS_SHORT[calM]} ${calY}</span>
+        <span class="cal-month-total">${fmt(monthTotal)}</span>
+      </div>
+      <div class="cal-grid">${cells}</div>
+      <div id="cal-day-detail"></div>
+    </div>
+  `;
+}
+
+function showCalDay(dateStr) {
+  const now = new Date();
+  const mk = monthKey(now.getFullYear(), now.getMonth());
+  const txs = state.transactions.filter(tx => tx.month === mk && tx.date === dateStr);
+  if (!txs.length) return;
+  const rows = txs.map(tx => `
+    <div class="tx-item" id="tx-${tx.id}">
+      <div class="tx-left">
+        <span class="tx-ticker">${tx.ticker}</span>
+        <span class="tx-date">${tx.date}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+        <span class="tx-amt">${fmtCurrency(tx.amount, tx.currency || 'AUD')}</span>
+        ${tx.units ? `<span class="tx-units">${tx.units.toFixed(3)} units</span>` : ''}
+        ${(tx.currency && tx.currency !== 'AUD') ? `<span class="tx-cur-badge">USD</span>` : ''}
+      </div>
+      <div class="tx-actions">
+        <button class="tx-edit" onclick="openEdit('${tx.id}')" aria-label="Edit">✎</button>
+        <button class="tx-delete" onclick="deleteTx('${tx.id}')" aria-label="Delete">×</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('cal-day-detail').innerHTML = `
+    <div class="cal-detail-label">${dateStr}</div>
+    ${rows}
+  `;
 }
 
 function exportCSV() {
