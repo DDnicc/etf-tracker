@@ -1,486 +1,1386 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#faf9f5">
-<title>ETF Tracker</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #faf9f5;
-    --surface: #ffffff;
-    --surface2: #e8e6dc;
-    --border: rgba(20,20,19,0.09);
-    --border2: rgba(20,20,19,0.18);
-    --text: #141413;
-    --text2: #6b6860;
-    --text3: #b0aea5;
-    --green: #3d6b4a;
-    --green-dim: rgba(74,124,89,0.10);
-    --amber: #9a6e2e;
-    --amber-dim: rgba(154,110,46,0.10);
-    --red: #b83228;
-    --red-dim: rgba(184,50,40,0.08);
-    --blue: #4a7fa8;
-    --blue-dim: rgba(74,127,168,0.10);
-    --orange: #d97757;
-    --orange-dim: rgba(217,119,87,0.10);
-    --accent: #141413;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --font: 'DM Sans', sans-serif;
-    --mono: 'DM Mono', monospace;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15px; overscroll-behavior: none; }
-  body { display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#faf9f5" />
+    <title>ETF Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #faf9f5;
+        --surface: #ffffff;
+        --surface2: #e8e6dc;
+        --border: rgba(20, 20, 19, 0.09);
+        --border2: rgba(20, 20, 19, 0.18);
+        --text: #141413;
+        --text2: #6b6860;
+        --text3: #b0aea5;
+        --green: #3d6b4a;
+        --green-dim: rgba(74, 124, 89, 0.1);
+        --amber: #9a6e2e;
+        --amber-dim: rgba(154, 110, 46, 0.1);
+        --red: #b83228;
+        --red-dim: rgba(184, 50, 40, 0.08);
+        --blue: #4a7fa8;
+        --blue-dim: rgba(74, 127, 168, 0.1);
+        --orange: #d97757;
+        --orange-dim: rgba(217, 119, 87, 0.1);
+        --accent: #141413;
+        --radius: 12px;
+        --radius-sm: 8px;
+        --font: "DM Sans", sans-serif;
+        --mono: "DM Mono", monospace;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html,
+      body {
+        height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 15px;
+        overscroll-behavior: none;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        max-width: 430px;
+        margin: 0 auto;
+      }
 
-  /* Header */
-  .app-header { padding: 52px 20px 12px; display: flex; align-items: baseline; justify-content: space-between; }
-  .app-title { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--orange); letter-spacing: 0.08em; text-transform: uppercase; }
-  .month-nav { display: flex; align-items: center; gap: 12px; }
-  .month-nav button { background: none; border: none; color: var(--text2); font-size: 18px; cursor: pointer; line-height: 1; padding: 4px; }
-  .month-nav button:disabled { color: var(--text3); cursor: default; }
-  .month-label { font-family: var(--mono); font-size: 13px; color: var(--text); min-width: 68px; text-align: center; }
+      /* Header */
+      .app-header {
+        padding: 52px 20px 12px;
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+      }
+      .app-title {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--orange);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .month-nav {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .month-nav button {
+        background: none;
+        border: none;
+        color: var(--text2);
+        font-size: 18px;
+        cursor: pointer;
+        line-height: 1;
+        padding: 4px;
+      }
+      .month-nav button:disabled {
+        color: var(--text3);
+        cursor: default;
+      }
+      .month-label {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--text);
+        min-width: 68px;
+        text-align: center;
+      }
 
-  /* Content */
-  .content { flex: 1; overflow-y: auto; padding: 0 16px; padding-bottom: 90px; }
+      /* Content */
+      .content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0 16px;
+        padding-bottom: 90px;
+      }
 
-  /* Summary strip */
-  .summary-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-  .stat { background: var(--surface); border: 0.5px solid var(--border); border-left: 2px solid var(--orange); border-radius: var(--radius); padding: 14px 16px; }
-  .stat-label { font-size: 11px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
-  .stat-val { font-size: 24px; font-weight: 300; color: var(--text); font-family: var(--mono); }
-  .stat-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+      /* Summary strip */
+      .summary-strip {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .stat {
+        background: var(--surface);
+        border: 0.5px solid var(--border);
+        border-left: 2px solid var(--orange);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+      }
+      .stat-label {
+        font-size: 11px;
+        color: var(--text3);
+        font-family: var(--mono);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 6px;
+      }
+      .stat-val {
+        font-size: 24px;
+        font-weight: 300;
+        color: var(--text);
+        font-family: var(--mono);
+      }
+      .stat-sub {
+        font-size: 11px;
+        color: var(--text3);
+        margin-top: 3px;
+      }
 
-  /* Big progress ring */
-  .ring-wrap { display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
-  .ring-container { position: relative; width: 110px; height: 110px; }
-  .ring-container svg { transform: rotate(-90deg); }
-  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .ring-pct { font-family: var(--mono); font-size: 22px; font-weight: 500; color: var(--text); }
-  .ring-sub { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+      /* Big progress ring */
+      .ring-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+      .ring-container {
+        position: relative;
+        width: 110px;
+        height: 110px;
+      }
+      .ring-container svg {
+        transform: rotate(-90deg);
+      }
+      .ring-center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .ring-pct {
+        font-family: var(--mono);
+        font-size: 22px;
+        font-weight: 500;
+        color: var(--text);
+      }
+      .ring-sub {
+        font-size: 10px;
+        color: var(--text3);
+        font-family: var(--mono);
+      }
 
-  /* ETF cards */
-  .swipe-wrap { position: relative; overflow: hidden; border-radius: var(--radius); margin-bottom: 10px; }
-  .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 90px; background: var(--red); display: flex; align-items: center; justify-content: center; border-radius: var(--radius); }
-  .swipe-delete-action { background: none; border: none; color: #fff; font-family: var(--mono); font-size: 13px; font-weight: 500; cursor: pointer; padding: 0 16px; height: 100%; width: 100%; }
-  .swipe-item { position: relative; transition: transform 0.25s ease; will-change: transform; touch-action: pan-y; background: var(--surface); border-radius: var(--radius); }
-  .swipe-item.swiped { transform: translateX(-90px); }
-  .etf-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; cursor: pointer; transition: border-color 0.15s, transform 0.25s ease; }
-  .etf-card:active { border-color: var(--border2); }
-  .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-  .ticker { font-family: var(--mono); font-size: 16px; font-weight: 500; color: var(--text); }
-  .badge { font-size: 11px; font-family: var(--mono); padding: 3px 9px; border-radius: 20px; }
-  .badge-ok { background: var(--green-dim); color: var(--green); }
-  .badge-warn { background: var(--amber-dim); color: var(--amber); }
-  .badge-done { background: var(--blue-dim); color: var(--blue); }
-  .card-bar-bg { height: 3px; background: var(--surface2); border-radius: 2px; margin-bottom: 8px; overflow: hidden; }
-  .card-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
-  .fill-ok { background: var(--green); }
-  .fill-warn { background: var(--amber); }
-  .fill-done { background: var(--blue); }
-  .card-bottom { display: flex; justify-content: space-between; font-size: 12px; }
-  .card-spent { color: var(--text2); font-family: var(--mono); }
-  .card-remaining { color: var(--text3); font-family: var(--mono); }
+      /* ETF cards */
+      .swipe-wrap {
+        position: relative;
+        overflow: hidden;
+        border-radius: var(--radius);
+        margin-bottom: 10px;
+      }
+      .swipe-delete-bg {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 90px;
+        background: var(--red);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius);
+      }
+      .swipe-delete-action {
+        background: none;
+        border: none;
+        color: #fff;
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        padding: 0 16px;
+        height: 100%;
+        width: 100%;
+      }
+      .swipe-item {
+        position: relative;
+        transition: transform 0.25s ease;
+        will-change: transform;
+        touch-action: pan-y;
+        background: var(--surface);
+        border-radius: var(--radius);
+      }
+      .swipe-item.swiped {
+        transform: translateX(-90px);
+      }
+      .etf-card {
+        background: var(--surface);
+        border: 0.5px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          transform 0.25s ease;
+      }
+      .etf-card:active {
+        border-color: var(--border2);
+      }
+      .card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .ticker {
+        font-family: var(--mono);
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--text);
+      }
+      .badge {
+        font-size: 11px;
+        font-family: var(--mono);
+        padding: 3px 9px;
+        border-radius: 20px;
+      }
+      .badge-ok {
+        background: var(--green-dim);
+        color: var(--green);
+      }
+      .badge-warn {
+        background: var(--amber-dim);
+        color: var(--amber);
+      }
+      .badge-done {
+        background: var(--blue-dim);
+        color: var(--blue);
+      }
+      .card-bar-bg {
+        height: 3px;
+        background: var(--surface2);
+        border-radius: 2px;
+        margin-bottom: 8px;
+        overflow: hidden;
+      }
+      .card-bar-fill {
+        height: 100%;
+        border-radius: 2px;
+        transition: width 0.4s ease;
+      }
+      .fill-ok {
+        background: var(--green);
+      }
+      .fill-warn {
+        background: var(--amber);
+      }
+      .fill-done {
+        background: var(--blue);
+      }
+      .card-bottom {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+      }
+      .card-spent {
+        color: var(--text2);
+        font-family: var(--mono);
+      }
+      .card-remaining {
+        color: var(--text3);
+        font-family: var(--mono);
+      }
 
-  /* Buy screen */
-  .screen { display: none; }
-  .screen.active { display: block; }
-  .screen-header { padding: 52px 20px 16px; display: flex; align-items: center; gap: 12px; }
-  .back-btn { background: none; border: none; color: var(--text2); font-size: 22px; cursor: pointer; line-height: 1; padding: 4px 4px 4px 0; }
-  .screen-title { font-size: 18px; font-weight: 500; color: var(--text); }
+      /* Buy screen */
+      .screen {
+        display: none;
+      }
+      .screen.active {
+        display: block;
+      }
+      .screen-header {
+        padding: 52px 20px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .back-btn {
+        background: none;
+        border: none;
+        color: var(--text2);
+        font-size: 22px;
+        cursor: pointer;
+        line-height: 1;
+        padding: 4px 4px 4px 0;
+      }
+      .screen-title {
+        font-size: 18px;
+        font-weight: 500;
+        color: var(--text);
+      }
 
-  .form-wrap { padding: 0 16px; padding-bottom: 90px; }
-  .form-section { margin-bottom: 24px; }
-  .form-section-label { font-size: 11px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+      .form-wrap {
+        padding: 0 16px;
+        padding-bottom: 90px;
+      }
+      .form-section {
+        margin-bottom: 24px;
+      }
+      .form-section-label {
+        font-size: 11px;
+        font-family: var(--mono);
+        color: var(--text3);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 10px;
+      }
 
-  /* Suggestion chips */
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip { padding: 8px 14px; border: 0.5px solid var(--border2); border-radius: 20px; font-size: 13px; font-family: var(--mono); color: var(--text2); cursor: pointer; background: transparent; transition: all 0.15s; white-space: nowrap; }
-  .chip:active, .chip.selected { background: var(--surface2); color: var(--text); border-color: var(--border2); }
-  .chip-remaining { font-size: 11px; color: var(--text3); margin-left: 4px; }
+      /* Suggestion chips */
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .chip {
+        padding: 8px 14px;
+        border: 0.5px solid var(--border2);
+        border-radius: 20px;
+        font-size: 13px;
+        font-family: var(--mono);
+        color: var(--text2);
+        cursor: pointer;
+        background: transparent;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+      .chip:active,
+      .chip.selected {
+        background: var(--surface2);
+        color: var(--text);
+        border-color: var(--border2);
+      }
+      .chip-remaining {
+        font-size: 11px;
+        color: var(--text3);
+        margin-left: 4px;
+      }
 
-  /* Form fields */
-  .field { margin-bottom: 16px; }
-  .field label { display: block; font-size: 12px; font-family: var(--mono); color: var(--text3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .field select, .field input, .field input[type=date] { width: 100%; background: var(--surface); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 13px 14px; font-size: 16px; color: var(--text); font-family: var(--mono); outline: none; appearance: none; -webkit-appearance: none; }
-  .field input[type=date]::-webkit-calendar-picker-indicator { opacity: 0.4; cursor: pointer; }
-  .field select:focus, .field input:focus { border-color: rgba(255,255,255,0.3); }
-  .field input::placeholder { color: var(--text3); }
+      /* Form fields */
+      .field {
+        margin-bottom: 16px;
+      }
+      .field label {
+        display: block;
+        font-size: 12px;
+        font-family: var(--mono);
+        color: var(--text3);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .field select,
+      .field input,
+      .field input[type="date"] {
+        width: 100%;
+        background: var(--surface);
+        border: 0.5px solid var(--border2);
+        border-radius: var(--radius-sm);
+        padding: 13px 14px;
+        font-size: 16px;
+        color: var(--text);
+        font-family: var(--mono);
+        outline: none;
+        appearance: none;
+        -webkit-appearance: none;
+      }
+      .field input[type="date"]::-webkit-calendar-picker-indicator {
+        opacity: 0.4;
+        cursor: pointer;
+      }
+      .field select:focus,
+      .field input:focus {
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+      .field input::placeholder {
+        color: var(--text3);
+      }
 
-  /* Confirm */
-  .confirm-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
-  .confirm-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 0.5px solid var(--border); font-size: 14px; }
-  .confirm-row:last-child { border-bottom: none; padding-bottom: 0; }
-  .confirm-row.total { padding-top: 12px; margin-top: 4px; }
-  .confirm-key { color: var(--text3); font-family: var(--mono); font-size: 12px; }
-  .confirm-val { color: var(--text); font-family: var(--mono); font-weight: 500; }
+      /* Confirm */
+      .confirm-card {
+        background: var(--surface);
+        border: 0.5px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .confirm-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 0.5px solid var(--border);
+        font-size: 14px;
+      }
+      .confirm-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+      .confirm-row.total {
+        padding-top: 12px;
+        margin-top: 4px;
+      }
+      .confirm-key {
+        color: var(--text3);
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .confirm-val {
+        color: var(--text);
+        font-family: var(--mono);
+        font-weight: 500;
+      }
 
-  /* Buttons */
-  .btn { width: 100%; padding: 15px; border-radius: var(--radius); font-size: 15px; font-weight: 500; cursor: pointer; border: 0.5px solid var(--border2); background: transparent; color: var(--text); font-family: var(--font); transition: all 0.15s; }
-  .btn:active { transform: scale(0.98); opacity: 0.8; }
-  .btn-primary { background: var(--orange); color: #ffffff; border-color: var(--orange); }
-  .btn-row { display: flex; gap: 10px; }
-  .btn-row .btn { flex: 1; }
+      /* Buttons */
+      .btn {
+        width: 100%;
+        padding: 15px;
+        border-radius: var(--radius);
+        font-size: 15px;
+        font-weight: 500;
+        cursor: pointer;
+        border: 0.5px solid var(--border2);
+        background: transparent;
+        color: var(--text);
+        font-family: var(--font);
+        transition: all 0.15s;
+      }
+      .btn:active {
+        transform: scale(0.98);
+        opacity: 0.8;
+      }
+      .btn-primary {
+        background: var(--orange);
+        color: #ffffff;
+        border-color: var(--orange);
+      }
+      .btn-row {
+        display: flex;
+        gap: 10px;
+      }
+      .btn-row .btn {
+        flex: 1;
+      }
 
-  /* History */
-  .tx-list { padding-bottom: 90px; }
-  .tx-month-group { margin-bottom: 24px; }
-  .tx-month-label { font-size: 11px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 16px; margin-bottom: 8px; }
-  .tx-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 0.5px solid var(--border); }
-  .tx-left { display: flex; flex-direction: column; gap: 3px; }
-  .tx-ticker { font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--text); }
-  .tx-date { font-family: var(--mono); font-size: 11px; color: var(--text3); }
-  .tx-amt { font-family: var(--mono); font-size: 14px; color: var(--text); }
-  .tx-units { font-family: var(--mono); font-size: 11px; color: var(--text3); }
-  .tx-cur-badge { font-family: var(--mono); font-size: 10px; color: var(--orange); background: var(--orange-dim); padding: 1px 6px; border-radius: 4px; }
-  .tx-actions { display: flex; align-items: center; gap: 2px; }
-  .tx-edit { background: none; border: none; color: var(--text3); font-size: 16px; cursor: pointer; padding: 4px 6px; line-height: 1; transition: color 0.15s; }
-  .tx-edit:active { color: var(--orange); }
-  .cur-pick-btn { flex: 1; padding: 10px; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); background: transparent; color: var(--text2); font-family: var(--mono); font-size: 13px; cursor: pointer; }
-  .cur-pick-active { border-color: var(--orange); color: var(--orange); background: var(--orange-dim); }
-  .alloc-pct { font-family: var(--mono); font-size: 11px; color: var(--text3); min-width: 30px; text-align: right; flex-shrink: 0; }
-  .cur-toggle { font-family: var(--mono); font-size: 10px; padding: 3px 7px; border-radius: 4px; cursor: pointer; border: 0.5px solid var(--border2); background: transparent; flex-shrink: 0; font-weight: 500; }
-  .cur-aud { color: var(--text2); }
-  .cur-usd { color: var(--orange); border-color: var(--orange); background: var(--orange-dim); }
-  .tx-delete { background: none; border: none; color: var(--text3); font-size: 18px; cursor: pointer; padding: 4px 4px 4px 12px; }
-  .empty-state { padding: 48px 16px; text-align: center; color: var(--text3); font-family: var(--mono); font-size: 13px; }
-  .export-btn { display: flex; align-items: center; gap: 5px; padding: 7px 14px; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); background: transparent; color: var(--text2); font-family: var(--mono); font-size: 12px; cursor: pointer; }
-  .export-btn:active { background: var(--surface2); color: var(--text); }
+      /* History */
+      .tx-list {
+        padding-bottom: 90px;
+      }
+      .tx-month-group {
+        margin-bottom: 24px;
+      }
+      .tx-month-label {
+        font-size: 11px;
+        font-family: var(--mono);
+        color: var(--text3);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 0 16px;
+        margin-bottom: 8px;
+      }
+      .tx-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 0.5px solid var(--border);
+      }
+      .tx-left {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .tx-ticker {
+        font-family: var(--mono);
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text);
+      }
+      .tx-date {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text3);
+      }
+      .tx-amt {
+        font-family: var(--mono);
+        font-size: 14px;
+        color: var(--text);
+      }
+      .tx-units {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text3);
+      }
+      .tx-cur-badge {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--orange);
+        background: var(--orange-dim);
+        padding: 1px 6px;
+        border-radius: 4px;
+      }
+      .tx-actions {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+      .tx-edit {
+        background: none;
+        border: none;
+        color: var(--text3);
+        font-size: 16px;
+        cursor: pointer;
+        padding: 4px 6px;
+        line-height: 1;
+        transition: color 0.15s;
+      }
+      .tx-edit:active {
+        color: var(--orange);
+      }
+      .cur-pick-btn {
+        flex: 1;
+        padding: 10px;
+        border: 0.5px solid var(--border2);
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text2);
+        font-family: var(--mono);
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .cur-pick-active {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-dim);
+      }
+      .alloc-pct {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text3);
+        min-width: 30px;
+        text-align: right;
+        flex-shrink: 0;
+      }
+      .cur-toggle {
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 3px 7px;
+        border-radius: 4px;
+        cursor: pointer;
+        border: 0.5px solid var(--border2);
+        background: transparent;
+        flex-shrink: 0;
+        font-weight: 500;
+      }
+      .cur-aud {
+        color: var(--text2);
+      }
+      .cur-usd {
+        color: var(--orange);
+        border-color: var(--orange);
+        background: var(--orange-dim);
+      }
+      .tx-delete {
+        background: none;
+        border: none;
+        color: var(--text3);
+        font-size: 18px;
+        cursor: pointer;
+        padding: 4px 4px 4px 12px;
+      }
+      .empty-state {
+        padding: 48px 16px;
+        text-align: center;
+        color: var(--text3);
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      .export-btn {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 7px 14px;
+        border: 0.5px solid var(--border2);
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text2);
+        font-family: var(--mono);
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .export-btn:active {
+        background: var(--surface2);
+        color: var(--text);
+      }
 
-  /* Settings */
-  .settings-wrap { padding: 0 14px; padding-bottom: 90px; }
-  .settings-section { margin-bottom: 28px; }
-  .settings-title { font-size: 11px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
-  .settings-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; width: 100%; }
-  .settings-row { display: flex; align-items: center; padding: 11px 14px; border-bottom: 0.5px solid var(--border); gap: 8px; background: var(--surface); }
-  .settings-row:last-child { border-bottom: none; }
-  .settings-ticker { font-family: var(--mono); font-size: 13px; font-weight: 500; width: 44px; color: var(--text); flex-shrink: 0; }
-  .settings-input { flex: 1; min-width: 0; max-width: 90px; background: transparent; border: none; font-size: 14px; font-family: var(--mono); color: var(--text); outline: none; text-align: right; }
-  .settings-input::placeholder { color: var(--text3); }
-  .settings-currency { font-family: var(--mono); font-size: 13px; color: var(--text3); }
-  .total-row { display: flex; justify-content: space-between; padding: 14px 16px; background: var(--surface2); border-radius: var(--radius); font-family: var(--mono); font-size: 13px; }
-  .total-row span:first-child { color: var(--text3); }
-  .total-row span:last-child { color: var(--text); font-weight: 500; }
-  .danger-btn { width: 100%; padding: 13px; border: 0.5px solid rgba(248,113,113,0.25); border-radius: var(--radius); background: transparent; color: var(--red); font-family: var(--mono); font-size: 13px; cursor: pointer; margin-top: 8px; }
-  .danger-btn:active { background: var(--red-dim); }
-  .clear-month-btn { width: 100%; padding: 11px; border: 0.5px solid rgba(184,50,40,0.2); border-radius: var(--radius); background: transparent; color: var(--red); font-family: var(--mono); font-size: 12px; cursor: pointer; }
-  .clear-month-btn:active { background: var(--red-dim); }
-  .etf-delete-btn { background: none; border: none; color: var(--text3); font-size: 20px; cursor: pointer; padding: 0 0 0 8px; line-height: 1; flex-shrink: 0; transition: color 0.15s; }
-  .etf-delete-btn:active { color: var(--red); }
-  .add-etf-row { display: flex; gap: 8px; align-items: center; }
-  .add-etf-input { flex: 1; background: var(--surface); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 12px 12px; font-size: 15px; color: var(--text); font-family: var(--mono); outline: none; min-width: 0; }
-  .add-etf-input::placeholder { color: var(--text3); }
-  .add-etf-input:focus { border-color: rgba(255,255,255,0.3); }
-  .add-etf-btn { padding: 12px 16px; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-family: var(--mono); font-size: 13px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
-  .add-etf-btn:active { opacity: 0.7; }
+      /* Settings */
+      .settings-wrap {
+        padding: 0 14px;
+        padding-bottom: 90px;
+      }
+      .settings-section {
+        margin-bottom: 28px;
+      }
+      .settings-title {
+        font-size: 11px;
+        font-family: var(--mono);
+        color: var(--text3);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 10px;
+      }
+      .settings-card {
+        background: var(--surface);
+        border: 0.5px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        width: 100%;
+      }
+      .settings-row {
+        display: flex;
+        align-items: center;
+        padding: 11px 14px;
+        border-bottom: 0.5px solid var(--border);
+        gap: 8px;
+        background: var(--surface);
+      }
+      .settings-row:last-child {
+        border-bottom: none;
+      }
+      .settings-ticker {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 500;
+        width: 44px;
+        color: var(--text);
+        flex-shrink: 0;
+      }
+      .settings-input {
+        flex: 1;
+        min-width: 0;
+        max-width: 90px;
+        background: transparent;
+        border: none;
+        font-size: 14px;
+        font-family: var(--mono);
+        color: var(--text);
+        outline: none;
+        text-align: right;
+      }
+      .settings-input::placeholder {
+        color: var(--text3);
+      }
+      .settings-currency {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--text3);
+      }
+      .total-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 14px 16px;
+        background: var(--surface2);
+        border-radius: var(--radius);
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      .total-row span:first-child {
+        color: var(--text3);
+      }
+      .total-row span:last-child {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .danger-btn {
+        width: 100%;
+        padding: 13px;
+        border: 0.5px solid rgba(248, 113, 113, 0.25);
+        border-radius: var(--radius);
+        background: transparent;
+        color: var(--red);
+        font-family: var(--mono);
+        font-size: 13px;
+        cursor: pointer;
+        margin-top: 8px;
+      }
+      .danger-btn:active {
+        background: var(--red-dim);
+      }
+      .clear-month-btn {
+        width: 100%;
+        padding: 11px;
+        border: 0.5px solid rgba(184, 50, 40, 0.2);
+        border-radius: var(--radius);
+        background: transparent;
+        color: var(--red);
+        font-family: var(--mono);
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .clear-month-btn:active {
+        background: var(--red-dim);
+      }
+      .etf-delete-btn {
+        background: none;
+        border: none;
+        color: var(--text3);
+        font-size: 20px;
+        cursor: pointer;
+        padding: 0 0 0 8px;
+        line-height: 1;
+        flex-shrink: 0;
+        transition: color 0.15s;
+      }
+      .etf-delete-btn:active {
+        color: var(--red);
+      }
+      .add-etf-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .add-etf-input {
+        flex: 1;
+        background: var(--surface);
+        border: 0.5px solid var(--border2);
+        border-radius: var(--radius-sm);
+        padding: 12px 12px;
+        font-size: 15px;
+        color: var(--text);
+        font-family: var(--mono);
+        outline: none;
+        min-width: 0;
+      }
+      .add-etf-input::placeholder {
+        color: var(--text3);
+      }
+      .add-etf-input:focus {
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+      .add-etf-btn {
+        padding: 12px 16px;
+        background: var(--surface2);
+        border: 0.5px solid var(--border2);
+        border-radius: var(--radius-sm);
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 13px;
+        cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .add-etf-btn:active {
+        opacity: 0.7;
+      }
 
-  /* Trade days bar */
-  .trade-days-bar { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border: 0.5px solid var(--border); border-left: 2px solid var(--orange); border-radius: var(--radius); padding: 10px 16px; margin-bottom: 16px; }
-  .trade-days-label { font-family: var(--mono); font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
-  .trade-days-count { font-family: var(--mono); font-size: 22px; font-weight: 500; color: var(--text); }
+      /* Trade days bar */
+      .trade-days-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--surface);
+        border: 0.5px solid var(--border);
+        border-left: 2px solid var(--orange);
+        border-radius: var(--radius);
+        padding: 10px 16px;
+        margin-bottom: 16px;
+      }
+      .trade-days-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text3);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .trade-days-count {
+        font-family: var(--mono);
+        font-size: 22px;
+        font-weight: 500;
+        color: var(--text);
+      }
 
-  /* History view toggle */
-  .view-toggle { display: flex; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); overflow: hidden; }
-  .view-toggle-btn { background: transparent; border: none; padding: 6px 10px; font-size: 14px; color: var(--text3); cursor: pointer; }
-  .view-toggle-btn.active { background: var(--surface2); color: var(--text); }
+      /* History view toggle */
+      .view-toggle {
+        display: flex;
+        border: 0.5px solid var(--border2);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+      }
+      .view-toggle-btn {
+        background: transparent;
+        border: none;
+        padding: 6px 10px;
+        font-size: 14px;
+        color: var(--text3);
+        cursor: pointer;
+      }
+      .view-toggle-btn.active {
+        background: var(--surface2);
+        color: var(--text);
+      }
 
-  /* Calendar */
-  .cal-month-nav { display: flex; justify-content: space-between; align-items: center; padding: 4px 0 12px; }
-  .cal-month-title { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text); }
-  .cal-month-total { font-family: var(--mono); font-size: 13px; color: var(--text2); }
-  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 16px; }
-  .cal-hdr { font-family: var(--mono); font-size: 10px; color: var(--text3); text-align: center; padding: 4px 0; }
-  .cal-cell { min-height: 44px; border-radius: 6px; display: flex; flex-direction: column; align-items: center; padding: 4px 2px; position: relative; cursor: default; }
-  .cal-cell.cal-has-tx { background: var(--orange-dim); cursor: pointer; }
-  .cal-cell.cal-today .cal-day-num { background: var(--orange); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
-  .cal-cell.cal-weekend .cal-day-num { color: var(--text3); }
-  .cal-day-num { font-family: var(--mono); font-size: 12px; color: var(--text2); width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
-  .cal-dots { display: flex; gap: 2px; margin-top: 2px; flex-wrap: wrap; justify-content: center; }
-  .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
-  .cal-detail-label { font-family: var(--mono); font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 0 4px; border-top: 0.5px solid var(--border); margin-bottom: 4px; }
+      /* Calendar */
+      .cal-month-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0 12px;
+      }
+      .cal-month-title {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text);
+      }
+      .cal-month-total {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--text2);
+      }
+      .cal-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 3px;
+        margin-bottom: 16px;
+      }
+      .cal-hdr {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text3);
+        text-align: center;
+        padding: 4px 0;
+      }
+      .cal-cell {
+        min-height: 44px;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 4px 2px;
+        position: relative;
+        cursor: default;
+      }
+      .cal-cell.cal-has-tx {
+        background: var(--orange-dim);
+        cursor: pointer;
+      }
+      .cal-cell.cal-today .cal-day-num {
+        background: var(--orange);
+        color: #fff;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .cal-cell.cal-weekend .cal-day-num {
+        color: var(--text3);
+      }
+      .cal-day-num {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text2);
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .cal-dots {
+        display: flex;
+        gap: 2px;
+        margin-top: 2px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .cal-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+      }
+      .cal-detail-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text3);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 8px 0 4px;
+        border-top: 0.5px solid var(--border);
+        margin-bottom: 4px;
+      }
 
-  /* Nav */
-  .nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; display: flex; background: rgba(250,249,245,0.94); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 0.5px solid var(--border); padding-bottom: env(safe-area-inset-bottom, 0); }
-  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0; cursor: pointer; border: none; background: none; color: var(--text3); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; transition: color 0.15s; }
-  .nav-item.active { color: var(--orange); }
-  .nav-icon { font-size: 20px; line-height: 1; }
+      /* Nav */
+      .nav {
+        position: fixed;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 430px;
+        display: flex;
+        background: rgba(250, 249, 245, 0.94);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-top: 0.5px solid var(--border);
+        padding-bottom: env(safe-area-inset-bottom, 0);
+      }
+      .nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 10px 0;
+        cursor: pointer;
+        border: none;
+        background: none;
+        color: var(--text3);
+        font-family: var(--mono);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        transition: color 0.15s;
+      }
+      .nav-item.active {
+        color: var(--orange);
+      }
+      .nav-icon {
+        font-size: 20px;
+        line-height: 1;
+      }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 0; }
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 0;
+      }
 
-  /* Toast */
-  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px); background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 10px 20px; font-family: var(--mono); font-size: 13px; color: var(--text); transition: transform 0.3s ease; z-index: 100; white-space: nowrap; }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-</style>
-</head>
-<body>
+      /* Toast */
+      .toast {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-80px);
+        background: var(--surface2);
+        border: 0.5px solid var(--border2);
+        border-radius: 20px;
+        padding: 10px 20px;
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--text);
+        transition: transform 0.3s ease;
+        z-index: 100;
+        white-space: nowrap;
+      }
+      .toast.show {
+        transform: translateX(-50%) translateY(0);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="toast" class="toast"></div>
 
-<div id="toast" class="toast"></div>
-
-<!-- Dashboard screen -->
-<div id="screen-dashboard" class="screen active">
-  <div class="app-header">
-    <span class="app-title">ETF Tracker</span>
-    <div class="month-nav">
-      <button id="prev-month" onclick="prevMonth()">‹</button>
-      <span class="month-label" id="month-label">—</span>
-      <button id="next-month" onclick="nextMonth()">›</button>
-    </div>
-  </div>
-  <div class="content" id="dashboard-content"></div>
-</div>
-
-<!-- Buy screen -->
-<div id="screen-buy" class="screen">
-  <div class="screen-header">
-    <button class="back-btn" onclick="goScreen('dashboard')">‹</button>
-    <span class="screen-title">Record buy</span>
-  </div>
-  <div class="form-wrap">
-    <div class="form-section">
-      <div class="form-section-label">Needs attention</div>
-      <div class="chips" id="suggestion-chips"></div>
-    </div>
-    <div class="field">
-      <label>ETF</label>
-      <select id="buy-ticker"></select>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="field">
-        <label>Units bought</label>
-        <input type="number" id="buy-units" inputmode="decimal" placeholder="0.000" step="0.001" />
+    <!-- Dashboard screen -->
+    <div id="screen-dashboard" class="screen active">
+      <div class="app-header">
+        <span class="app-title">ETF Tracker</span>
+        <div class="month-nav">
+          <button id="prev-month" onclick="prevMonth()">‹</button>
+          <span class="month-label" id="month-label">—</span>
+          <button id="next-month" onclick="nextMonth()">›</button>
+        </div>
       </div>
-      <div class="field">
-        <label id="buy-amount-label">Amount ($AUD)</label>
-        <input type="number" id="buy-amount" inputmode="decimal" placeholder="0.00" step="0.01" />
+      <div class="content" id="dashboard-content"></div>
+    </div>
+
+    <!-- Buy screen -->
+    <div id="screen-buy" class="screen">
+      <div class="screen-header">
+        <button class="back-btn" onclick="goScreen('dashboard')">‹</button>
+        <span class="screen-title">Record buy</span>
+      </div>
+      <div class="form-wrap">
+        <div class="form-section">
+          <div class="form-section-label">Needs attention</div>
+          <div class="chips" id="suggestion-chips"></div>
+        </div>
+        <div class="field">
+          <label>ETF</label>
+          <select id="buy-ticker"></select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+          <div class="field">
+            <label>Units bought</label>
+            <input
+              type="number"
+              id="buy-units"
+              inputmode="decimal"
+              placeholder="0.000"
+              step="0.001"
+            />
+          </div>
+          <div class="field">
+            <label id="buy-amount-label">Amount ($AUD)</label>
+            <input
+              type="number"
+              id="buy-amount"
+              inputmode="decimal"
+              placeholder="0.00"
+              step="0.01"
+            />
+          </div>
+        </div>
+        <div class="field" style="margin-top: 4px">
+          <label>Buy date</label>
+          <input type="date" id="buy-date" />
+        </div>
+        <button
+          class="btn btn-primary"
+          onclick="reviewBuy()"
+          style="margin-top: 8px"
+        >
+          Review →
+        </button>
       </div>
     </div>
-    <div class="field" style="margin-top:4px">
-      <label>Buy date</label>
-      <input type="date" id="buy-date" />
-    </div>
-    <button class="btn btn-primary" onclick="reviewBuy()" style="margin-top:8px">Review →</button>
-  </div>
-</div>
 
-<!-- Confirm screen -->
-<div id="screen-confirm" class="screen">
-  <div class="screen-header">
-    <button class="back-btn" onclick="goScreen('buy')">‹</button>
-    <span class="screen-title">Confirm</span>
-  </div>
-  <div class="form-wrap">
-    <div class="confirm-card" id="confirm-details"></div>
-    <div class="btn-row">
-      <button class="btn" onclick="goScreen('buy')">Edit</button>
-      <button class="btn btn-primary" onclick="saveBuy()">Confirm ✓</button>
-    </div>
-  </div>
-</div>
-
-<!-- Edit screen -->
-<div id="screen-edit" class="screen">
-  <div class="screen-header">
-    <button class="back-btn" onclick="goScreen('history')">‹</button>
-    <span class="screen-title">Edit buy</span>
-  </div>
-  <div class="form-wrap" id="edit-form-wrap"></div>
-</div>
-
-<!-- History screen -->
-<div id="screen-history" class="screen">
-  <div class="screen-header" style="justify-content:space-between">
-    <span class="screen-title">History</span>
-    <div style="display:flex;gap:6px;align-items:center">
-      <div class="view-toggle">
-        <button id="toggle-list" class="view-toggle-btn active" onclick="setHistoryView('list')" aria-label="List view">☰</button>
-        <button id="toggle-cal" class="view-toggle-btn" onclick="setHistoryView('calendar')" aria-label="Calendar view">⊞</button>
+    <!-- Confirm screen -->
+    <div id="screen-confirm" class="screen">
+      <div class="screen-header">
+        <button class="back-btn" onclick="goScreen('buy')">‹</button>
+        <span class="screen-title">Confirm</span>
       </div>
-      <label class="export-btn" for="csv-upload" aria-label="Import CSV">
-        <span style="font-size:15px">↑</span> Import
-      </label>
-      <input type="file" id="csv-upload" accept=".csv" style="display:none" onchange="importCSV(event)" />
-      <button class="export-btn" onclick="exportCSV()" aria-label="Export CSV">
-        <span style="font-size:15px">↓</span> Export
+      <div class="form-wrap">
+        <div class="confirm-card" id="confirm-details"></div>
+        <div class="btn-row">
+          <button class="btn" onclick="goScreen('buy')">Edit</button>
+          <button class="btn btn-primary" onclick="saveBuy()">Confirm ✓</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit screen -->
+    <div id="screen-edit" class="screen">
+      <div class="screen-header">
+        <button class="back-btn" onclick="goScreen('history')">‹</button>
+        <span class="screen-title">Edit buy</span>
+      </div>
+      <div class="form-wrap" id="edit-form-wrap"></div>
+    </div>
+
+    <!-- History screen -->
+    <div id="screen-history" class="screen">
+      <div class="screen-header" style="justify-content: space-between">
+        <span class="screen-title">History</span>
+        <div style="display: flex; gap: 6px; align-items: center">
+          <div class="view-toggle">
+            <button
+              id="toggle-list"
+              class="view-toggle-btn active"
+              onclick="setHistoryView('list')"
+              aria-label="List view"
+            >
+              ☰
+            </button>
+            <button
+              id="toggle-cal"
+              class="view-toggle-btn"
+              onclick="setHistoryView('calendar')"
+              aria-label="Calendar view"
+            >
+              ⊞
+            </button>
+          </div>
+          <label class="export-btn" for="csv-upload" aria-label="Import CSV">
+            <span style="font-size: 15px">↑</span> Import
+          </label>
+          <input
+            type="file"
+            id="csv-upload"
+            accept=".csv"
+            style="display: none"
+            onchange="importCSV(event)"
+          />
+          <button
+            class="export-btn"
+            onclick="exportCSV()"
+            aria-label="Export CSV"
+          >
+            <span style="font-size: 15px">↓</span> Export
+          </button>
+        </div>
+      </div>
+      <div class="tx-list" id="tx-list"></div>
+    </div>
+
+    <!-- Settings screen -->
+    <div id="screen-settings" class="screen">
+      <div class="screen-header">
+        <span class="screen-title">Targets</span>
+      </div>
+      <div class="settings-wrap" id="settings-content"></div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="nav">
+      <button
+        class="nav-item active"
+        id="nav-dashboard"
+        onclick="goScreen('dashboard')"
+      >
+        <span class="nav-icon">◎</span>Overview
       </button>
-    </div>
-  </div>
-  <div class="tx-list" id="tx-list"></div>
-</div>
+      <button class="nav-item" id="nav-buy" onclick="goScreen('buy')">
+        <span class="nav-icon">+</span>Buy
+      </button>
+      <button class="nav-item" id="nav-history" onclick="goScreen('history')">
+        <span class="nav-icon">≡</span>History
+      </button>
+      <button class="nav-item" id="nav-settings" onclick="goScreen('settings')">
+        <span class="nav-icon">◈</span>Targets
+      </button>
+    </nav>
 
-<!-- Settings screen -->
-<div id="screen-settings" class="screen">
-  <div class="screen-header">
-    <span class="screen-title">Targets</span>
-  </div>
-  <div class="settings-wrap" id="settings-content"></div>
-</div>
+    <script>
+      const MONTHS_SHORT = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      function getTickers() {
+        return state.tickers || Object.keys(state.targets);
+      }
 
-<!-- Nav -->
-<nav class="nav">
-  <button class="nav-item active" id="nav-dashboard" onclick="goScreen('dashboard')">
-    <span class="nav-icon">◎</span>Overview
-  </button>
-  <button class="nav-item" id="nav-buy" onclick="goScreen('buy')">
-    <span class="nav-icon">+</span>Buy
-  </button>
-  <button class="nav-item" id="nav-history" onclick="goScreen('history')">
-    <span class="nav-icon">≡</span>History
-  </button>
-  <button class="nav-item" id="nav-settings" onclick="goScreen('settings')">
-    <span class="nav-icon">◈</span>Targets
-  </button>
-</nav>
+      // ── State ──────────────────────────────────────────────────────────────────
+      function defaultState() {
+        const n = new Date();
+        return {
+          tickers: ["IVV", "VGE", "QQQM", "IWLD", "VHY", "GOLD"],
+          targets: {
+            IVV: 600,
+            VGE: 400,
+            QQQM: 500,
+            IWLD: 400,
+            VHY: 300,
+            GOLD: 300,
+          },
+          currencies: {
+            IVV: "AUD",
+            VGE: "AUD",
+            QQQM: "USD",
+            IWLD: "AUD",
+            VHY: "AUD",
+            GOLD: "AUD",
+          },
+          transactions: [],
+          viewMonth: { y: n.getFullYear(), m: n.getMonth() },
+          historyView: "list",
+        };
+      }
+      let state;
+      try {
+        const raw = localStorage.getItem("etf_v2");
+        state = raw ? JSON.parse(raw) : defaultState();
+        if (!state.tickers) state.tickers = Object.keys(state.targets);
+        if (!state.currencies) {
+          state.currencies = {};
+          state.tickers.forEach((t) => {
+            state.currencies[t] = "AUD";
+          });
+        }
+      } catch (e) {
+        state = defaultState();
+      }
 
-<script>
-const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-function getTickers() { return state.tickers || Object.keys(state.targets); }
+      function save() {
+        try {
+          localStorage.setItem("etf_v2", JSON.stringify(state));
+        } catch (e) {}
+      }
 
-// ── State ──────────────────────────────────────────────────────────────────
-function defaultState() {
-  const n = new Date();
-  return {
-    tickers: ['IVV','VGE','QQQM','IWLD','VHY','GOLD'],
-    targets: { IVV:600, VGE:400, QQQM:500, IWLD:400, VHY:300, GOLD:300 },
-    currencies: { IVV:'AUD', VGE:'AUD', QQQM:'USD', IWLD:'AUD', VHY:'AUD', GOLD:'AUD' },
-    transactions: [],
-    viewMonth: { y: n.getFullYear(), m: n.getMonth() },
-    historyView: 'list'
-  };
-}
-let state;
-try {
-  const raw = localStorage.getItem('etf_v2');
-  state = raw ? JSON.parse(raw) : defaultState();
-  if (!state.tickers) state.tickers = Object.keys(state.targets);
-  if (!state.currencies) { state.currencies = {}; state.tickers.forEach(t => { state.currencies[t] = 'AUD'; }); }
-} catch(e) { state = defaultState(); }
+      let pendingBuy = null;
+      let currentScreen = "dashboard";
 
-function save() {
-  try { localStorage.setItem('etf_v2', JSON.stringify(state)); } catch(e) {}
-}
+      // ── Helpers ─────────────────────────────────────────────────────────────────
+      function fmt(n) {
+        return "$" + Math.round(n).toLocaleString("en-AU");
+      }
+      function fmtCurrency(n, cur) {
+        return (
+          (cur === "USD" ? "US$" : "$") +
+          n.toLocaleString("en-AU", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })
+        );
+      }
+      function getCurrency(ticker) {
+        return (state.currencies && state.currencies[ticker]) || "AUD";
+      }
+      function monthKey(y, m) {
+        return `${y}-${String(m + 1).padStart(2, "0")}`;
+      }
+      function pct(s, t) {
+        return t ? Math.min(Math.round((s / t) * 100), 100) : 0;
+      }
 
-let pendingBuy = null;
-let currentScreen = 'dashboard';
+      function formatDisplayDate(isoDate) {
+        if (!isoDate) return "";
+        const d = new Date(isoDate + "T00:00:00");
+        return d.toLocaleDateString("en-AU", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+      }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-function fmt(n) { return '$' + Math.round(n).toLocaleString('en-AU'); }
-function fmtCurrency(n, cur) { return (cur === 'USD' ? 'US$' : '$') + n.toLocaleString('en-AU', {minimumFractionDigits:2, maximumFractionDigits:2}); }
-function getCurrency(ticker) { return (state.currencies && state.currencies[ticker]) || 'AUD'; }
-function monthKey(y, m) { return `${y}-${String(m+1).padStart(2,'0')}`; }
-function pct(s,t) { return t ? Math.min(Math.round(s/t*100), 100) : 0; }
+      function generateId() {
+        const now = new Date();
+        const datePart =
+          now.getFullYear().toString() +
+          String(now.getMonth() + 1).padStart(2, "0") +
+          String(now.getDate()).padStart(2, "0");
+        const existing = state.transactions.filter(
+          (tx) => typeof tx.id === "string" && tx.id.startsWith(datePart),
+        );
+        const seq = String(existing.length + 1).padStart(3, "0");
+        return datePart + "-" + seq;
+      }
 
-function formatDisplayDate(isoDate) {
-  if (!isoDate) return '';
-  const d = new Date(isoDate + 'T00:00:00');
-  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
-}
+      function tradeDaysLeft(y, m) {
+        const now = new Date();
+        const isCurrentMonth = y === now.getFullYear() && m === now.getMonth();
+        const lastDay = new Date(y, m + 1, 0); // last day of month
+        const start = isCurrentMonth
+          ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
+          : new Date(y, m, 1);
+        let count = 0;
+        const cur = new Date(start);
+        while (cur <= lastDay) {
+          const dow = cur.getDay();
+          if (dow !== 0 && dow !== 6) count++; // skip Sat/Sun
+          cur.setDate(cur.getDate() + 1);
+        }
+        // subtract today if already past 4pm AEST (market closed) — approximate
+        if (isCurrentMonth) {
+          const hour = now.getHours();
+          if (hour >= 16) count = Math.max(0, count - 1);
+        }
+        return count;
+      }
 
-function generateId() {
-  const now = new Date();
-  const datePart = now.getFullYear().toString() +
-    String(now.getMonth()+1).padStart(2,'0') +
-    String(now.getDate()).padStart(2,'0');
-  const existing = state.transactions.filter(tx =>
-    typeof tx.id === 'string' && tx.id.startsWith(datePart)
-  );
-  const seq = String(existing.length + 1).padStart(3,'0');
-  return datePart + '-' + seq;
-}
+      function spentMap(y, m) {
+        const key = monthKey(y, m);
+        const map = {};
+        getTickers().forEach((t) => (map[t] = 0));
+        state.transactions
+          .filter((tx) => tx.month === key)
+          .forEach((tx) => {
+            map[tx.ticker] = (map[tx.ticker] || 0) + tx.amount;
+          });
+        return map;
+      }
 
-function tradeDaysLeft(y, m) {
-  const now = new Date();
-  const isCurrentMonth = y === now.getFullYear() && m === now.getMonth();
-  const lastDay = new Date(y, m + 1, 0); // last day of month
-  const start = isCurrentMonth ? new Date(now.getFullYear(), now.getMonth(), now.getDate()) : new Date(y, m, 1);
-  let count = 0;
-  const cur = new Date(start);
-  while (cur <= lastDay) {
-    const dow = cur.getDay();
-    if (dow !== 0 && dow !== 6) count++; // skip Sat/Sun
-    cur.setDate(cur.getDate() + 1);
-  }
-  // subtract today if already past 4pm AEST (market closed) — approximate
-  if (isCurrentMonth) {
-    const hour = now.getHours();
-    if (hour >= 16) count = Math.max(0, count - 1);
-  }
-  return count;
-}
+      function totalTarget() {
+        return Object.values(state.targets).reduce((a, b) => a + b, 0);
+      }
 
-function spentMap(y, m) {
-  const key = monthKey(y, m);
-  const map = {};
-  getTickers().forEach(t => map[t] = 0);
-  state.transactions.filter(tx => tx.month === key).forEach(tx => { map[tx.ticker] = (map[tx.ticker]||0) + tx.amount; });
-  return map;
-}
+      function statusOf(spent, target) {
+        const p = target ? spent / target : 0;
+        if (p >= 1) return "done";
+        if (p >= 0.65) return "warn";
+        return "ok";
+      }
 
-function totalTarget() { return Object.values(state.targets).reduce((a,b)=>a+b,0); }
+      function badgeLabel(st) {
+        return st === "done" ? "Done" : st === "warn" ? "On track" : "Buy";
+      }
 
-function statusOf(spent, target) {
-  const p = target ? spent/target : 0;
-  if (p >= 1) return 'done';
-  if (p >= 0.65) return 'warn';
-  return 'ok';
-}
+      function toast(msg) {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.classList.add("show");
+        setTimeout(() => el.classList.remove("show"), 2200);
+      }
 
-function badgeLabel(st) { return st === 'done' ? 'Done' : st === 'warn' ? 'On track' : 'Buy'; }
+      // ── Screen routing ───────────────────────────────────────────────────────────
+      function goScreen(s) {
+        ["dashboard", "buy", "confirm", "history", "settings", "edit"].forEach(
+          (id) => {
+            document
+              .getElementById("screen-" + id)
+              .classList.toggle("active", id === s);
+            const nav = document.getElementById("nav-" + id);
+            if (nav) nav.classList.toggle("active", id === s);
+          },
+        );
+        currentScreen = s;
+        if (s === "dashboard") renderDashboard();
+        if (s === "buy") renderBuy();
+        if (s === "confirm") renderConfirm();
+        if (s === "history") renderHistory();
+        if (s === "settings") renderSettings();
+        if (s === "edit") renderEdit();
+      }
 
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2200);
-}
+      // ── Dashboard ────────────────────────────────────────────────────────────────
+      function renderDashboard() {
+        const { y, m } = state.viewMonth;
+        const now = new Date();
+        document.getElementById("month-label").textContent =
+          MONTHS_SHORT[m] + " " + y;
+        document.getElementById("next-month").disabled =
+          y === now.getFullYear() && m === now.getMonth();
 
-// ── Screen routing ───────────────────────────────────────────────────────────
-function goScreen(s) {
-  ['dashboard','buy','confirm','history','settings','edit'].forEach(id => {
-    document.getElementById('screen-'+id).classList.toggle('active', id === s);
-    const nav = document.getElementById('nav-'+id);
-    if (nav) nav.classList.toggle('active', id === s);
-  });
-  currentScreen = s;
-  if (s === 'dashboard') renderDashboard();
-  if (s === 'buy') renderBuy();
-  if (s === 'confirm') renderConfirm();
-  if (s === 'history') renderHistory();
-  if (s === 'settings') renderSettings();
-  if (s === 'edit') renderEdit();
-}
+        const spent = spentMap(y, m);
+        const totSpent = Object.values(spent).reduce((a, b) => a + b, 0);
+        const totTarget = totalTarget();
+        const overall = pct(totSpent, totTarget);
+        const remaining = Math.max(0, totTarget - totSpent);
 
-// ── Dashboard ────────────────────────────────────────────────────────────────
-function renderDashboard() {
-  const { y, m } = state.viewMonth;
-  const now = new Date();
-  document.getElementById('month-label').textContent = MONTHS_SHORT[m] + ' ' + y;
-  document.getElementById('next-month').disabled = (y === now.getFullYear() && m === now.getMonth());
+        // Ring circumference
+        const R = 46,
+          C = 2 * Math.PI * R;
+        const dash = (overall / 100) * C;
+        let ringColor =
+          overall >= 100 ? "#4a7fa8" : overall >= 65 ? "#9a6e2e" : "#3d6b4a";
 
-  const spent = spentMap(y, m);
-  const totSpent = Object.values(spent).reduce((a,b)=>a+b,0);
-  const totTarget = totalTarget();
-  const overall = pct(totSpent, totTarget);
-  const remaining = Math.max(0, totTarget - totSpent);
-
-  // Ring circumference
-  const R = 46, C = 2 * Math.PI * R;
-  const dash = (overall / 100) * C;
-  let ringColor = overall >= 100 ? '#4a7fa8' : overall >= 65 ? '#9a6e2e' : '#3d6b4a';
-
-  const cards = getTickers().map(t => {
-    const s = spent[t], tg = state.targets[t];
-    const st = statusOf(s, tg);
-    const p = pct(s, tg);
-    const rem = Math.max(0, tg - s);
-    return `<div class="swipe-wrap" id="sw-${t}">
+        const cards = getTickers()
+          .map((t) => {
+            const s = spent[t],
+              tg = state.targets[t];
+            const st = statusOf(s, tg);
+            const p = pct(s, tg);
+            const rem = Math.max(0, tg - s);
+            return `<div class="swipe-wrap" id="sw-${t}">
       <div class="swipe-delete-bg">
         <button class="swipe-delete-action" onclick="deleteETFConfirm('${t}')">Delete</button>
       </div>
@@ -492,16 +1392,17 @@ function renderDashboard() {
         <div class="card-bar-bg"><div class="card-bar-fill fill-${st}" style="width:${p}%"></div></div>
         <div class="card-bottom">
           <span class="card-spent">${fmt(s)} spent</span>
-          <span class="card-remaining">${rem > 0 ? fmt(rem)+' left' : 'target met'}</span>
+          <span class="card-remaining">${rem > 0 ? fmt(rem) + " left" : "target met"}</span>
         </div>
       </div>
     </div>`;
-  }).join('');
+          })
+          .join("");
 
-  closeAllSwipes();
-  const tradeDays = tradeDaysLeft(y, m);
-  const isCurrentMonth = y === now.getFullYear() && m === now.getMonth();
-  document.getElementById('dashboard-content').innerHTML = `
+        closeAllSwipes();
+        const tradeDays = tradeDaysLeft(y, m);
+        const isCurrentMonth = y === now.getFullYear() && m === now.getMonth();
+        document.getElementById("dashboard-content").innerHTML = `
     <div class="summary-strip">
       <div class="stat">
         <div class="stat-label">Invested</div>
@@ -515,7 +1416,7 @@ function renderDashboard() {
       </div>
     </div>
     <div class="trade-days-bar">
-      <span class="trade-days-label">Trade days ${isCurrentMonth ? 'remaining' : 'in month'}</span>
+      <span class="trade-days-label">Trade days ${isCurrentMonth ? "remaining" : "in month"}</span>
       <span class="trade-days-count">${tradeDays} <span style="font-size:11px;font-weight:400;color:var(--text3)">days</span></span>
     </div>
     <div class="ring-wrap">
@@ -534,166 +1435,220 @@ function renderDashboard() {
     ${cards}
     <button class="clear-month-btn" onclick="resetMonth()" style="margin-top:4px">Clear ${MONTHS_SHORT[m]} ${y} buys</button>
   `;
-  setTimeout(initSwipe, 0);
-}
+        setTimeout(initSwipe, 0);
+      }
 
-function prevMonth() {
-  let { y, m } = state.viewMonth;
-  m--; if (m < 0) { m = 11; y--; }
-  state.viewMonth = { y, m };
-  save();
-  renderDashboard();
-}
+      function prevMonth() {
+        let { y, m } = state.viewMonth;
+        m--;
+        if (m < 0) {
+          m = 11;
+          y--;
+        }
+        state.viewMonth = { y, m };
+        save();
+        renderDashboard();
+      }
 
-function nextMonth() {
-  const now = new Date();
-  let { y, m } = state.viewMonth;
-  if (y === now.getFullYear() && m === now.getMonth()) return;
-  m++; if (m > 11) { m = 0; y++; }
-  state.viewMonth = { y, m };
-  save();
-  renderDashboard();
-}
+      function nextMonth() {
+        const now = new Date();
+        let { y, m } = state.viewMonth;
+        if (y === now.getFullYear() && m === now.getMonth()) return;
+        m++;
+        if (m > 11) {
+          m = 0;
+          y++;
+        }
+        state.viewMonth = { y, m };
+        save();
+        renderDashboard();
+      }
 
-// ── Buy ──────────────────────────────────────────────────────────────────────
-let selectedTicker = null;
+      // ── Buy ──────────────────────────────────────────────────────────────────────
+      let selectedTicker = null;
 
-function renderBuy() {
-  const { y, m } = state.viewMonth;
-  const spent = spentMap(y, m);
+      function renderBuy() {
+        const { y, m } = state.viewMonth;
+        const spent = spentMap(y, m);
 
-  // suggestions sorted by remaining
-  const suggestions = getTickers()
-    .map(t => ({ ticker: t, rem: Math.max(0, state.targets[t] - spent[t]) }))
-    .filter(x => x.rem > 0)
-    .sort((a,b) => b.rem - a.rem)
-    .slice(0, 4);
+        // suggestions sorted by remaining
+        const suggestions = getTickers()
+          .map((t) => ({
+            ticker: t,
+            rem: Math.max(0, state.targets[t] - spent[t]),
+          }))
+          .filter((x) => x.rem > 0)
+          .sort((a, b) => b.rem - a.rem)
+          .slice(0, 4);
 
-  const sel = document.getElementById('buy-ticker');
-  sel.innerHTML = getTickers().map(t => `<option value="${t}">${t}</option>`).join('');
-  if (selectedTicker) sel.value = selectedTicker;
-  else if (suggestions[0]) sel.value = suggestions[0].ticker;
+        const sel = document.getElementById("buy-ticker");
+        sel.innerHTML = getTickers()
+          .map((t) => `<option value="${t}">${t}</option>`)
+          .join("");
+        if (selectedTicker) sel.value = selectedTicker;
+        else if (suggestions[0]) sel.value = suggestions[0].ticker;
 
-  const chips = suggestions.map(s =>
-    `<button class="chip" onclick="selectChip('${s.ticker}')">${s.ticker}<span class="chip-remaining"> ${fmt(s.rem)}</span></button>`
-  ).join('');
-  document.getElementById('suggestion-chips').innerHTML = chips;
+        const chips = suggestions
+          .map(
+            (s) =>
+              `<button class="chip" onclick="selectChip('${s.ticker}')">${s.ticker}<span class="chip-remaining"> ${fmt(s.rem)}</span></button>`,
+          )
+          .join("");
+        document.getElementById("suggestion-chips").innerHTML = chips;
 
-  // highlight matching chip
-  highlightChip(sel.value);
-  updateBuyCurrencyLabel(sel.value);
-  sel.addEventListener('change', () => { highlightChip(sel.value); updateBuyCurrencyLabel(sel.value); });
+        // highlight matching chip
+        highlightChip(sel.value);
+        updateBuyCurrencyLabel(sel.value);
+        sel.addEventListener("change", () => {
+          highlightChip(sel.value);
+          updateBuyCurrencyLabel(sel.value);
+        });
 
-  document.getElementById('buy-amount').value = '';
-  const uEl = document.getElementById('buy-units'); if (uEl) uEl.value = '';
-  const dEl = document.getElementById('buy-date');
-  if (dEl && !dEl.value) {
-    const t = new Date();
-    dEl.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
-  }
-}
+        document.getElementById("buy-amount").value = "";
+        const uEl = document.getElementById("buy-units");
+        if (uEl) uEl.value = "";
+        const dEl = document.getElementById("buy-date");
+        if (dEl && !dEl.value) {
+          const t = new Date();
+          dEl.value =
+            t.getFullYear() +
+            "-" +
+            String(t.getMonth() + 1).padStart(2, "0") +
+            "-" +
+            String(t.getDate()).padStart(2, "0");
+        }
+      }
 
-function updateBuyCurrencyLabel(ticker) {
-  const cur = getCurrency(ticker);
-  const lbl = document.getElementById('buy-amount-label');
-  if (lbl) lbl.textContent = cur === 'USD' ? 'Amount (USD)' : 'Amount (AUD)';
-}
+      function updateBuyCurrencyLabel(ticker) {
+        const cur = getCurrency(ticker);
+        const lbl = document.getElementById("buy-amount-label");
+        if (lbl)
+          lbl.textContent = cur === "USD" ? "Amount (USD)" : "Amount (AUD)";
+      }
 
-function prefillBuy(ticker) {
-  selectedTicker = ticker;
-  goScreen('buy');
-}
+      function prefillBuy(ticker) {
+        selectedTicker = ticker;
+        goScreen("buy");
+      }
 
-function selectChip(ticker) {
-  document.getElementById('buy-ticker').value = ticker;
-  highlightChip(ticker);
-}
+      function selectChip(ticker) {
+        document.getElementById("buy-ticker").value = ticker;
+        highlightChip(ticker);
+      }
 
-function highlightChip(ticker) {
-  document.querySelectorAll('#suggestion-chips .chip').forEach(c => {
-    c.classList.toggle('selected', c.textContent.trim().startsWith(ticker));
-  });
-}
+      function highlightChip(ticker) {
+        document.querySelectorAll("#suggestion-chips .chip").forEach((c) => {
+          c.classList.toggle(
+            "selected",
+            c.textContent.trim().startsWith(ticker),
+          );
+        });
+      }
 
-function reviewBuy() {
-  const ticker = document.getElementById('buy-ticker').value;
-  const amt = parseFloat(document.getElementById('buy-amount').value);
-  const units = parseFloat(document.getElementById('buy-units').value) || null;
-  const buyDateVal = document.getElementById('buy-date')?.value || '';
-  if (!units || units <= 0) { toast('Enter units bought to continue'); return; }
-  if (!amt || amt <= 0) { toast('Enter the amount paid to continue'); return; }
-  pendingBuy = { ticker, amount: amt, units, currency: getCurrency(ticker), buyDate: buyDateVal };
-  goScreen('confirm');
-}
+      function reviewBuy() {
+        const ticker = document.getElementById("buy-ticker").value;
+        const amt = parseFloat(document.getElementById("buy-amount").value);
+        const units =
+          parseFloat(document.getElementById("buy-units").value) || null;
+        const buyDateVal = document.getElementById("buy-date")?.value || "";
+        if (!units || units <= 0) {
+          toast("Enter units bought to continue");
+          return;
+        }
+        if (!amt || amt <= 0) {
+          toast("Enter the amount paid to continue");
+          return;
+        }
+        pendingBuy = {
+          ticker,
+          amount: amt,
+          units,
+          currency: getCurrency(ticker),
+          buyDate: buyDateVal,
+        };
+        goScreen("confirm");
+      }
 
-function renderConfirm() {
-  if (!pendingBuy) return;
-  const { y, m } = state.viewMonth;
-  const spent = spentMap(y, m);
-  const s = spent[pendingBuy.ticker];
-  const tg = state.targets[pendingBuy.ticker];
-  const newSpent = s + pendingBuy.amount;
-  const newRem = Math.max(0, tg - newSpent);
+      function renderConfirm() {
+        if (!pendingBuy) return;
+        const { y, m } = state.viewMonth;
+        const spent = spentMap(y, m);
+        const s = spent[pendingBuy.ticker];
+        const tg = state.targets[pendingBuy.ticker];
+        const newSpent = s + pendingBuy.amount;
+        const newRem = Math.max(0, tg - newSpent);
 
-  document.getElementById('confirm-details').innerHTML = `
+        document.getElementById("confirm-details").innerHTML = `
     <div class="confirm-row"><span class="confirm-key">ETF</span><span class="confirm-val">${pendingBuy.ticker}</span></div>
-    <div class="confirm-row"><span class="confirm-key">Buy date</span><span class="confirm-val">${pendingBuy.buyDate ? formatDisplayDate(pendingBuy.buyDate) : '—'}</span></div>
+    <div class="confirm-row"><span class="confirm-key">Buy date</span><span class="confirm-val">${pendingBuy.buyDate ? formatDisplayDate(pendingBuy.buyDate) : "—"}</span></div>
     <div class="confirm-row"><span class="confirm-key">Amount</span><span class="confirm-val">${fmtCurrency(pendingBuy.amount, pendingBuy.currency)}</span></div>
-    <div class="confirm-row"><span class="confirm-key">Currency</span><span class="confirm-val">${pendingBuy.currency === 'USD' ? '🇺🇸 USD' : '🇦🇺 AUD'}</span></div>
-    ${pendingBuy.units ? `<div class="confirm-row"><span class="confirm-key">Units</span><span class="confirm-val">${pendingBuy.units.toFixed(3)}</span></div>` : ''}
+    <div class="confirm-row"><span class="confirm-key">Currency</span><span class="confirm-val">${pendingBuy.currency === "USD" ? "🇺🇸 USD" : "🇦🇺 AUD"}</span></div>
+    ${pendingBuy.units ? `<div class="confirm-row"><span class="confirm-key">Units</span><span class="confirm-val">${pendingBuy.units.toFixed(3)}</span></div>` : ""}
     <div class="confirm-row"><span class="confirm-key">Month</span><span class="confirm-val">${MONTHS_SHORT[m]} ${y}</span></div>
     <div class="confirm-row"><span class="confirm-key">Previously spent</span><span class="confirm-val">${fmt(s)}</span></div>
-    <div class="confirm-row"><span class="confirm-key">Progress after</span><span class="confirm-val">${pct(newSpent,tg)}%</span></div>
-    <div class="confirm-row total"><span class="confirm-key">Remaining after</span><span class="confirm-val">${newRem > 0 ? fmt(newRem) : '✓ target met'}</span></div>
+    <div class="confirm-row"><span class="confirm-key">Progress after</span><span class="confirm-val">${pct(newSpent, tg)}%</span></div>
+    <div class="confirm-row total"><span class="confirm-key">Remaining after</span><span class="confirm-val">${newRem > 0 ? fmt(newRem) : "✓ target met"}</span></div>
   `;
-}
+      }
 
-function saveBuy() {
-  if (!pendingBuy) return;
-  const buyD = pendingBuy.buyDate ? new Date(pendingBuy.buyDate + 'T00:00:00') : new Date();
-  const txMonth = monthKey(buyD.getFullYear(), buyD.getMonth());
-  state.transactions.push({
-    ticker: pendingBuy.ticker,
-    amount: pendingBuy.amount,
-    units: pendingBuy.units || null,
-    currency: pendingBuy.currency || 'AUD',
-    month: txMonth,
-    date: buyD.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }),
-    id: generateId()
-  });
-  save();
-  pendingBuy = null;
-  selectedTicker = null;
-  const buyDateEl = document.getElementById('buy-date');
-  if (buyDateEl) buyDateEl.value = '';
-  toast('Buy recorded ✓');
-  goScreen('dashboard');
-}
+      function saveBuy() {
+        if (!pendingBuy) return;
+        const buyD = pendingBuy.buyDate
+          ? new Date(pendingBuy.buyDate + "T00:00:00")
+          : new Date();
+        const txMonth = monthKey(buyD.getFullYear(), buyD.getMonth());
+        state.transactions.push({
+          ticker: pendingBuy.ticker,
+          amount: pendingBuy.amount,
+          units: pendingBuy.units || null,
+          currency: pendingBuy.currency || "AUD",
+          month: txMonth,
+          date: buyD.toLocaleDateString("en-AU", {
+            day: "numeric",
+            month: "short",
+          }),
+          id: generateId(),
+        });
+        save();
+        pendingBuy = null;
+        selectedTicker = null;
+        const buyDateEl = document.getElementById("buy-date");
+        if (buyDateEl) buyDateEl.value = "";
+        toast("Buy recorded ✓");
+        goScreen("dashboard");
+      }
 
-let editingId = null;
+      let editingId = null;
 
-function openEdit(id) {
-  editingId = id;
-  goScreen('edit');
-}
+      function openEdit(id) {
+        editingId = id;
+        goScreen("edit");
+      }
 
-function renderEdit() {
-  if (!editingId) return;
-  const tx = state.transactions.find(t => String(t.id) === String(editingId));
-  if (!tx) return;
-  const cur = tx.currency || 'AUD';
-  document.getElementById('edit-form-wrap').innerHTML = `
+      function renderEdit() {
+        if (!editingId) return;
+        const tx = state.transactions.find(
+          (t) => String(t.id) === String(editingId),
+        );
+        if (!tx) return;
+        const cur = tx.currency || "AUD";
+        document.getElementById("edit-form-wrap").innerHTML = `
     <div class="field">
       <label>ETF</label>
       <select id="edit-ticker">
-        ${getTickers().map(t => `<option value="${t}" ${t === tx.ticker ? 'selected' : ''}>${t}</option>`).join('')}
+        ${getTickers()
+          .map(
+            (t) =>
+              `<option value="${t}" ${t === tx.ticker ? "selected" : ""}>${t}</option>`,
+          )
+          .join("")}
       </select>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="field">
         <label>Units bought</label>
         <input type="number" id="edit-units" inputmode="decimal" placeholder="0.000" step="0.001"
-          value="${tx.units != null ? tx.units : ''}" />
+          value="${tx.units != null ? tx.units : ""}" />
       </div>
       <div class="field">
         <label id="edit-amount-label">Amount (${cur})</label>
@@ -704,8 +1659,8 @@ function renderEdit() {
     <div class="field">
       <label>Currency</label>
       <div style="display:flex;gap:8px">
-        <button class="cur-pick-btn ${cur === 'AUD' ? 'cur-pick-active' : ''}" onclick="setEditCurrency('AUD')">🇦🇺 AUD</button>
-        <button class="cur-pick-btn ${cur === 'USD' ? 'cur-pick-active' : ''}" onclick="setEditCurrency('USD')">🇺🇸 USD</button>
+        <button class="cur-pick-btn ${cur === "AUD" ? "cur-pick-active" : ""}" onclick="setEditCurrency('AUD')">🇦🇺 AUD</button>
+        <button class="cur-pick-btn ${cur === "USD" ? "cur-pick-active" : ""}" onclick="setEditCurrency('USD')">🇺🇸 USD</button>
       </div>
     </div>
     <div class="field">
@@ -717,150 +1672,183 @@ function renderEdit() {
       <button class="btn btn-primary" onclick="saveEdit()">Save changes</button>
     </div>
   `;
-}
+      }
 
-let editCurrency = null;
+      let editCurrency = null;
 
-function setEditCurrency(cur) {
-  editCurrency = cur;
-  document.querySelectorAll('.cur-pick-btn').forEach(b => {
-    b.classList.toggle('cur-pick-active', b.textContent.includes(cur));
-  });
-  const lbl = document.getElementById('edit-amount-label');
-  if (lbl) lbl.textContent = 'Amount (' + cur + ')';
-}
+      function setEditCurrency(cur) {
+        editCurrency = cur;
+        document.querySelectorAll(".cur-pick-btn").forEach((b) => {
+          b.classList.toggle("cur-pick-active", b.textContent.includes(cur));
+        });
+        const lbl = document.getElementById("edit-amount-label");
+        if (lbl) lbl.textContent = "Amount (" + cur + ")";
+      }
 
-function saveEdit() {
-  const tx = state.transactions.find(t => String(t.id) === String(editingId));
-  if (!tx) return;
-  const ticker = document.getElementById('edit-ticker').value;
-  const amount = parseFloat(document.getElementById('edit-amount').value);
-  const units = parseFloat(document.getElementById('edit-units').value) || null;
-  const date = document.getElementById('edit-date').value.trim();
-  const cur = editCurrency || tx.currency || 'AUD';
+      function saveEdit() {
+        const tx = state.transactions.find(
+          (t) => String(t.id) === String(editingId),
+        );
+        if (!tx) return;
+        const ticker = document.getElementById("edit-ticker").value;
+        const amount = parseFloat(document.getElementById("edit-amount").value);
+        const units =
+          parseFloat(document.getElementById("edit-units").value) || null;
+        const date = document.getElementById("edit-date").value.trim();
+        const cur = editCurrency || tx.currency || "AUD";
 
-  if (!amount || amount <= 0) { toast('Enter a valid amount'); return; }
+        if (!amount || amount <= 0) {
+          toast("Enter a valid amount");
+          return;
+        }
 
-  tx.ticker = ticker;
-  tx.amount = amount;
-  tx.units = units;
-  tx.currency = cur;
-  if (date) tx.date = date;
+        tx.ticker = ticker;
+        tx.amount = amount;
+        tx.units = units;
+        tx.currency = cur;
+        if (date) tx.date = date;
 
-  save();
-  editingId = null;
-  editCurrency = null;
-  toast('Buy updated ✓');
-  goScreen('history');
-}
+        save();
+        editingId = null;
+        editCurrency = null;
+        toast("Buy updated ✓");
+        goScreen("history");
+      }
 
-// ── History ──────────────────────────────────────────────────────────────────
-function setHistoryView(v) {
-  state.historyView = v;
-  save();
-  document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
-  const btn = document.getElementById('toggle-' + v);
-  if (btn) btn.classList.add('active');
-  renderHistory();
-}
+      // ── History ──────────────────────────────────────────────────────────────────
+      function setHistoryView(v) {
+        state.historyView = v;
+        save();
+        document
+          .querySelectorAll(".view-toggle-btn")
+          .forEach((b) => b.classList.remove("active"));
+        const btn = document.getElementById("toggle-" + v);
+        if (btn) btn.classList.add("active");
+        renderHistory();
+      }
 
-function renderHistory() {
-  // sync toggle state
-  setTimeout(() => {
-    const v = state.historyView || 'list';
-    document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById('toggle-' + v);
-    if (btn) btn.classList.add('active');
-  }, 0);
-  if ((state.historyView || 'list') === 'calendar') { renderCalendar(); return; }
-  const txs = [...state.transactions].reverse();
-  if (txs.length === 0) {
-    document.getElementById('tx-list').innerHTML = '<div class="empty-state">No buys recorded yet.</div>';
-    return;
-  }
+      function renderHistory() {
+        // sync toggle state
+        setTimeout(() => {
+          const v = state.historyView || "list";
+          document
+            .querySelectorAll(".view-toggle-btn")
+            .forEach((b) => b.classList.remove("active"));
+          const btn = document.getElementById("toggle-" + v);
+          if (btn) btn.classList.add("active");
+        }, 0);
+        if ((state.historyView || "list") === "calendar") {
+          renderCalendar();
+          return;
+        }
+        const txs = [...state.transactions].reverse();
+        if (txs.length === 0) {
+          document.getElementById("tx-list").innerHTML =
+            '<div class="empty-state">No buys recorded yet.</div>';
+          return;
+        }
 
-  // group by month
-  const groups = {};
-  txs.forEach(tx => {
-    if (!groups[tx.month]) groups[tx.month] = [];
-    groups[tx.month].push(tx);
-  });
+        // group by month
+        const groups = {};
+        txs.forEach((tx) => {
+          if (!groups[tx.month]) groups[tx.month] = [];
+          groups[tx.month].push(tx);
+        });
 
-  let html = '';
-  Object.keys(groups).sort().reverse().forEach(mk => {
-    const [y, mo] = mk.split('-').map(Number);
-    const label = MONTHS_SHORT[mo-1] + ' ' + y;
-    const monthTotal = groups[mk].reduce((a,tx) => a+tx.amount, 0);
-    html += `<div class="tx-month-group">
+        let html = "";
+        Object.keys(groups)
+          .sort()
+          .reverse()
+          .forEach((mk) => {
+            const [y, mo] = mk.split("-").map(Number);
+            const label = MONTHS_SHORT[mo - 1] + " " + y;
+            const monthTotal = groups[mk].reduce((a, tx) => a + tx.amount, 0);
+            html += `<div class="tx-month-group">
       <div class="tx-month-label">${label} · ${fmt(monthTotal)}</div>
-      ${groups[mk].map(tx => `
+      ${groups[mk]
+        .map(
+          (tx) => `
         <div class="tx-item" id="tx-${tx.id}">
           <div class="tx-left">
             <span class="tx-ticker">${tx.ticker}</span>
             <span class="tx-date">${tx.date}</span>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
-            <span class="tx-amt">${fmtCurrency(tx.amount, tx.currency || 'AUD')}</span>
-            ${tx.units ? `<span class="tx-units">${tx.units.toFixed(3)} units</span>` : ''}
-            ${(tx.currency && tx.currency !== 'AUD') ? `<span class="tx-cur-badge">USD</span>` : ''}
+            <span class="tx-amt">${fmtCurrency(tx.amount, tx.currency || "AUD")}</span>
+            ${tx.units ? `<span class="tx-units">${tx.units.toFixed(3)} units</span>` : ""}
+            ${tx.currency && tx.currency !== "AUD" ? `<span class="tx-cur-badge">USD</span>` : ""}
           </div>
           <div class="tx-actions">
             <button class="tx-edit" onclick="openEdit('${tx.id}')" aria-label="Edit">✎</button>
             <button class="tx-delete" onclick="deleteTx('${tx.id}')" aria-label="Delete">×</button>
           </div>
-        </div>`).join('')}
+        </div>`,
+        )
+        .join("")}
     </div>`;
-  });
-  document.getElementById('tx-list').innerHTML = html;
-}
+          });
+        document.getElementById("tx-list").innerHTML = html;
+      }
 
-function renderCalendar() {
-  const now = new Date();
-  const calY = now.getFullYear();
-  const calM = now.getMonth();
+      function renderCalendar() {
+        const now = new Date();
+        const calY = now.getFullYear();
+        const calM = now.getMonth();
 
-  // Build tx lookup by date string "D Mon" for current month
-  const mk = monthKey(calY, calM);
-  const txsByDate = {};
-  state.transactions.filter(tx => tx.month === mk).forEach(tx => {
-    if (!txsByDate[tx.date]) txsByDate[tx.date] = [];
-    txsByDate[tx.date].push(tx);
-  });
+        // Build tx lookup by date string "D Mon" for current month
+        const mk = monthKey(calY, calM);
+        const txsByDate = {};
+        state.transactions
+          .filter((tx) => tx.month === mk)
+          .forEach((tx) => {
+            if (!txsByDate[tx.date]) txsByDate[tx.date] = [];
+            txsByDate[tx.date].push(tx);
+          });
 
-  const firstDay = new Date(calY, calM, 1).getDay(); // 0=Sun
-  const daysInMonth = new Date(calY, calM + 1, 0).getDate();
-  const today = now.getDate();
+        const firstDay = new Date(calY, calM, 1).getDay(); // 0=Sun
+        const daysInMonth = new Date(calY, calM + 1, 0).getDate();
+        const today = now.getDate();
 
-  // Calendar grid
-  let cells = '';
-  // Day headers
-  ['S','M','T','W','T','F','S'].forEach(d => {
-    cells += `<div class="cal-hdr">${d}</div>`;
-  });
-  // Empty cells before first day
-  for (let i = 0; i < firstDay; i++) cells += `<div class="cal-cell"></div>`;
+        // Calendar grid
+        let cells = "";
+        // Day headers
+        ["S", "M", "T", "W", "T", "F", "S"].forEach((d) => {
+          cells += `<div class="cal-hdr">${d}</div>`;
+        });
+        // Empty cells before first day
+        for (let i = 0; i < firstDay; i++)
+          cells += `<div class="cal-cell"></div>`;
 
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateObj = new Date(calY, calM, d);
-    const dateStr = dateObj.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-    const txs = txsByDate[dateStr] || [];
-    const isToday = d === today;
-    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-    const hasTx = txs.length > 0;
-    const dots = txs.slice(0, 3).map(tx => `<span class="cal-dot" style="background:var(--orange)"></span>`).join('');
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dateObj = new Date(calY, calM, d);
+          const dateStr = dateObj.toLocaleDateString("en-AU", {
+            day: "numeric",
+            month: "short",
+          });
+          const txs = txsByDate[dateStr] || [];
+          const isToday = d === today;
+          const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+          const hasTx = txs.length > 0;
+          const dots = txs
+            .slice(0, 3)
+            .map(
+              (tx) =>
+                `<span class="cal-dot" style="background:var(--orange)"></span>`,
+            )
+            .join("");
 
-    cells += `<div class="cal-cell ${isToday ? 'cal-today' : ''} ${isWeekend ? 'cal-weekend' : ''} ${hasTx ? 'cal-has-tx' : ''}"
-      onclick="${hasTx ? `showCalDay('${dateStr}')` : ''}">
+          cells += `<div class="cal-cell ${isToday ? "cal-today" : ""} ${isWeekend ? "cal-weekend" : ""} ${hasTx ? "cal-has-tx" : ""}"
+      onclick="${hasTx ? `showCalDay('${dateStr}')` : ""}">
       <span class="cal-day-num">${d}</span>
       <div class="cal-dots">${dots}</div>
     </div>`;
-  }
+        }
 
-  // Month total
-  const monthTxs = state.transactions.filter(tx => tx.month === mk);
-  const monthTotal = monthTxs.reduce((a,tx) => a + tx.amount, 0);
+        // Month total
+        const monthTxs = state.transactions.filter((tx) => tx.month === mk);
+        const monthTotal = monthTxs.reduce((a, tx) => a + tx.amount, 0);
 
-  document.getElementById('tx-list').innerHTML = `
+        document.getElementById("tx-list").innerHTML = `
     <div style="padding:0 16px">
       <div class="cal-month-nav">
         <span class="cal-month-title">${MONTHS_SHORT[calM]} ${calY}</span>
@@ -870,157 +1858,203 @@ function renderCalendar() {
       <div id="cal-day-detail"></div>
     </div>
   `;
-}
+      }
 
-function showCalDay(dateStr) {
-  const now = new Date();
-  const mk = monthKey(now.getFullYear(), now.getMonth());
-  const txs = state.transactions.filter(tx => tx.month === mk && tx.date === dateStr);
-  if (!txs.length) return;
-  const rows = txs.map(tx => `
+      function showCalDay(dateStr) {
+        const now = new Date();
+        const mk = monthKey(now.getFullYear(), now.getMonth());
+        const txs = state.transactions.filter(
+          (tx) => tx.month === mk && tx.date === dateStr,
+        );
+        if (!txs.length) return;
+        const rows = txs
+          .map(
+            (tx) => `
     <div class="tx-item" id="tx-${tx.id}">
       <div class="tx-left">
         <span class="tx-ticker">${tx.ticker}</span>
         <span class="tx-date">${tx.date}</span>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
-        <span class="tx-amt">${fmtCurrency(tx.amount, tx.currency || 'AUD')}</span>
-        ${tx.units ? `<span class="tx-units">${tx.units.toFixed(3)} units</span>` : ''}
-        ${(tx.currency && tx.currency !== 'AUD') ? `<span class="tx-cur-badge">USD</span>` : ''}
+        <span class="tx-amt">${fmtCurrency(tx.amount, tx.currency || "AUD")}</span>
+        ${tx.units ? `<span class="tx-units">${tx.units.toFixed(3)} units</span>` : ""}
+        ${tx.currency && tx.currency !== "AUD" ? `<span class="tx-cur-badge">USD</span>` : ""}
       </div>
       <div class="tx-actions">
         <button class="tx-edit" onclick="openEdit('${tx.id}')" aria-label="Edit">✎</button>
         <button class="tx-delete" onclick="deleteTx('${tx.id}')" aria-label="Delete">×</button>
       </div>
-    </div>`).join('');
-  document.getElementById('cal-day-detail').innerHTML = `
+    </div>`,
+          )
+          .join("");
+        document.getElementById("cal-day-detail").innerHTML = `
     <div class="cal-detail-label">${dateStr}</div>
     ${rows}
   `;
-}
+      }
 
-function exportCSV() {
-  if (state.transactions.length === 0) { toast('No transactions to export'); return; }
-  const rows = [['Record ID','Date','Month','ETF','Units','Amount','Currency']];
-  [...state.transactions]
-    .sort((a,b) => a.id - b.id)
-    .forEach(tx => {
-      rows.push([
-        tx.id,
-        tx.date || '',
-        tx.month || '',
-        tx.ticker || '',
-        tx.units != null ? tx.units.toFixed(3) : '',
-        tx.amount != null ? tx.amount.toFixed(2) : '',
-        tx.currency || 'AUD'
-      ]);
-    });
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const now = new Date();
-  a.download = `etf-buys-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  toast('CSV downloaded ✓');
-}
+      function exportCSV() {
+        if (state.transactions.length === 0) {
+          toast("No transactions to export");
+          return;
+        }
+        const rows = [
+          ["Record ID", "Date", "Month", "ETF", "Units", "Amount", "Currency"],
+        ];
+        [...state.transactions]
+          .sort((a, b) => a.id - b.id)
+          .forEach((tx) => {
+            rows.push([
+              tx.id,
+              tx.date || "",
+              tx.month || "",
+              tx.ticker || "",
+              tx.units != null ? tx.units.toFixed(3) : "",
+              tx.amount != null ? tx.amount.toFixed(2) : "",
+              tx.currency || "AUD",
+            ]);
+          });
+        const csv = rows
+          .map((r) =>
+            r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","),
+          )
+          .join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const now = new Date();
+        a.download = `etf-buys-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast("CSV downloaded ✓");
+      }
 
-function importCSV(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const text = e.target.result;
-    const lines = text.trim().split(/\r?\n/);
-    if (lines.length < 2) { toast('CSV appears empty'); return; }
+      function importCSV(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const text = e.target.result;
+          const lines = text.trim().split(/\r?\n/);
+          if (lines.length < 2) {
+            toast("CSV appears empty");
+            return;
+          }
 
-    // Parse header to find column positions
-    const header = lines[0].split(',').map(h => h.replace(/"/g,'').trim().toLowerCase());
-    const col = name => header.indexOf(name);
+          // Parse header to find column positions
+          const header = lines[0]
+            .split(",")
+            .map((h) => h.replace(/"/g, "").trim().toLowerCase());
+          const col = (name) => header.indexOf(name);
 
-    const idCol      = col('record id');
-    const dateCol    = col('date');
-    const monthCol   = col('month');
-    const tickerCol  = col('etf');
-    const unitsCol   = col('units');
-    const amountCol  = col('amount');
-    const currencyCol= col('currency');
+          const idCol = col("record id");
+          const dateCol = col("date");
+          const monthCol = col("month");
+          const tickerCol = col("etf");
+          const unitsCol = col("units");
+          const amountCol = col("amount");
+          const currencyCol = col("currency");
 
-    if (tickerCol === -1 || amountCol === -1) {
-      toast('Invalid CSV format'); return;
-    }
+          if (tickerCol === -1 || amountCol === -1) {
+            toast("Invalid CSV format");
+            return;
+          }
 
-    const parseCell = v => (v || '').replace(/"/g,'').trim();
+          const parseCell = (v) => (v || "").replace(/"/g, "").trim();
 
-    let imported = 0, skipped = 0;
-    const existingIds = new Set(state.transactions.map(tx => String(tx.id)));
+          let imported = 0,
+            skipped = 0;
+          const existingIds = new Set(
+            state.transactions.map((tx) => String(tx.id)),
+          );
 
-    for (let i = 1; i < lines.length; i++) {
-      const cells = lines[i].match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g) || lines[i].split(',');
-      const get = idx => idx >= 0 ? parseCell(cells[idx] || '') : '';
+          for (let i = 1; i < lines.length; i++) {
+            const cells =
+              lines[i].match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g) ||
+              lines[i].split(",");
+            const get = (idx) => (idx >= 0 ? parseCell(cells[idx] || "") : "");
 
-      const id      = get(idCol) || String(Date.now() + i);
-      const ticker  = get(tickerCol).toUpperCase();
-      const amount  = parseFloat(get(amountCol));
-      const units   = parseFloat(get(unitsCol)) || null;
-      const month   = get(monthCol);
-      const date    = get(dateCol);
-      const currency= get(currencyCol) || 'AUD';
+            const id = get(idCol) || String(Date.now() + i);
+            const ticker = get(tickerCol).toUpperCase();
+            const amount = parseFloat(get(amountCol));
+            const units = parseFloat(get(unitsCol)) || null;
+            const month = get(monthCol);
+            const date = get(dateCol);
+            const currency = get(currencyCol) || "AUD";
 
-      if (!ticker || isNaN(amount) || amount <= 0) { skipped++; continue; }
-      if (existingIds.has(String(id))) { skipped++; continue; }
+            if (!ticker || isNaN(amount) || amount <= 0) {
+              skipped++;
+              continue;
+            }
+            if (existingIds.has(String(id))) {
+              skipped++;
+              continue;
+            }
 
-      state.transactions.push({ id, ticker, amount, units, month, date, currency });
-      existingIds.add(String(id));
-      imported++;
-    }
+            state.transactions.push({
+              id,
+              ticker,
+              amount,
+              units,
+              month,
+              date,
+              currency,
+            });
+            existingIds.add(String(id));
+            imported++;
+          }
 
-    save();
-    event.target.value = ''; // reset file input
-    renderHistory();
-    toast(`Imported ${imported} record${imported !== 1 ? 's' : ''}${skipped ? ', '+skipped+' skipped' : ''} ✓`);
-  };
-  reader.readAsText(file);
-}
+          save();
+          event.target.value = ""; // reset file input
+          renderHistory();
+          toast(
+            `Imported ${imported} record${imported !== 1 ? "s" : ""}${skipped ? ", " + skipped + " skipped" : ""} ✓`,
+          );
+        };
+        reader.readAsText(file);
+      }
 
-function deleteTx(id) {
-  if (!confirm('Remove this buy?')) return;
-  state.transactions = state.transactions.filter(tx => String(tx.id) !== String(id));
-  save();
-  renderHistory();
-}
+      function deleteTx(id) {
+        if (!confirm("Remove this buy?")) return;
+        state.transactions = state.transactions.filter(
+          (tx) => String(tx.id) !== String(id),
+        );
+        save();
+        renderHistory();
+      }
 
-// ── Settings ─────────────────────────────────────────────────────────────────
-function renderSettings() {
-  const tickers = getTickers();
-  const { y, m } = state.viewMonth;
+      // ── Settings ─────────────────────────────────────────────────────────────────
+      function renderSettings() {
+        const tickers = getTickers();
+        const { y, m } = state.viewMonth;
 
-  const tot = totalTarget();
-  const rows = tickers.map(t => {
-    const cur = getCurrency(t);
-    const tgt = state.targets[t] || 0;
-    const allocPct = tot > 0 ? Math.round(tgt / tot * 100) : 0;
-    return `
+        const tot = totalTarget();
+        const rows = tickers
+          .map((t) => {
+            const cur = getCurrency(t);
+            const tgt = state.targets[t] || 0;
+            const allocPct = tot > 0 ? Math.round((tgt / tot) * 100) : 0;
+            return `
     <div class="swipe-wrap" id="ssw-${t}">
       <div class="swipe-delete-bg">
         <button class="swipe-delete-action" onclick="deleteETF('${t}')">Delete</button>
       </div>
       <div class="settings-row swipe-item" id="srow-${t}" data-swipe-id="${t}" data-swipe-type="setting">
         <span class="settings-ticker">${t}</span>
-        <button class="cur-toggle ${cur === 'USD' ? 'cur-usd' : 'cur-aud'}" onclick="toggleCurrency('${t}')">${cur}</button>
-        <input class="settings-input" type="number" inputmode="decimal" value="${tgt||''}"
+        <button class="cur-toggle ${cur === "USD" ? "cur-usd" : "cur-aud"}" onclick="toggleCurrency('${t}')">${cur}</button>
+        <input class="settings-input" type="number" inputmode="decimal" value="${tgt || ""}"
           placeholder="0" onchange="updateTarget('${t}',this.value)" oninput="refreshTotal()" />
         <span class="alloc-pct" id="pct-${t}">${allocPct}%</span>
       </div>
     </div>`;
-  }).join('');
+          })
+          .join("");
 
-  closeAllSwipes();
-  document.getElementById('settings-content').innerHTML = `
+        closeAllSwipes();
+        document.getElementById("settings-content").innerHTML = `
     <div class="settings-section">
       <div class="settings-title">Monthly $ target per ETF</div>
       <div class="settings-card" id="etf-rows">${rows}</div>
@@ -1047,173 +2081,227 @@ function renderSettings() {
       <button class="danger-btn" onclick="resetTargets()">Reset all targets to $0</button>
     </div>
   `;
-  setTimeout(initSwipe, 0);
-}
-
-function addETF() {
-  const tickerEl = document.getElementById('new-ticker-input');
-  const targetEl = document.getElementById('new-target-input');
-  const ticker = tickerEl.value.trim().toUpperCase();
-  const target = parseFloat(targetEl.value) || 0;
-  const currency = document.getElementById('new-currency-input')?.value || 'AUD';
-
-  if (!ticker) { toast('Enter a ticker symbol'); return; }
-  if (getTickers().includes(ticker)) { toast(ticker + ' already exists'); return; }
-
-  state.tickers.push(ticker);
-  state.targets[ticker] = target;
-  if (!state.currencies) state.currencies = {};
-  state.currencies[ticker] = currency;
-  save();
-  toast(ticker + ' added ✓');
-  renderSettings();
-}
-
-function toggleCurrency(ticker) {
-  if (!state.currencies) state.currencies = {};
-  state.currencies[ticker] = state.currencies[ticker] === 'USD' ? 'AUD' : 'USD';
-  save();
-  renderSettings();
-}
-
-function deleteETFConfirm(ticker) {
-  resetSwipe(ticker, 'card');
-  deleteETF(ticker);
-}
-
-function deleteETF(ticker) {
-  const hasTx = state.transactions.some(tx => tx.ticker === ticker);
-  const msg = hasTx
-    ? `Remove ${ticker}? It has buy history — history will be kept but ${ticker} won't appear on the dashboard.`
-    : `Remove ${ticker}?`;
-  if (!confirm(msg)) return;
-  state.tickers = state.tickers.filter(t => t !== ticker);
-  delete state.targets[ticker];
-  save();
-  toast(ticker + ' removed');
-  renderSettings();
-  renderDashboard();
-}
-
-function updateTarget(ticker, val) {
-  state.targets[ticker] = parseFloat(val) || 0;
-  save();
-  refreshTotal();
-}
-
-function refreshTotal() {
-  const tot = totalTarget();
-  const el = document.getElementById('total-display');
-  if (el) el.innerHTML = `<span>Total per month</span><span>${fmt(tot)}</span>`;
-  getTickers().forEach(t => {
-    const pctEl = document.getElementById('pct-' + t);
-    if (!pctEl) return;
-    const tgt = parseFloat(document.querySelector(`#srow-${t} .settings-input`)?.value) || state.targets[t] || 0;
-    pctEl.textContent = tot > 0 ? Math.round(tgt / tot * 100) + '%' : '0%';
-  });
-}
-
-function resetMonth() {
-  const { y, m } = state.viewMonth;
-  const key = monthKey(y, m);
-  if (!confirm(`Clear all buys for ${MONTHS_SHORT[m]} ${y}?`)) return;
-  state.transactions = state.transactions.filter(tx => tx.month !== key);
-  save();
-  toast('Month cleared');
-}
-
-function resetTargets() {
-  if (!confirm('Reset all monthly targets to $0? This won\'t affect your buy history.')) return;
-  getTickers().forEach(t => { state.targets[t] = 0; });
-  save();
-  toast('Targets reset to $0');
-  renderSettings();
-}
-
-
-// ── Swipe to delete ──────────────────────────────────────────────────────────
-let swipeState = {};
-
-function initSwipe() {
-  document.querySelectorAll('.swipe-item').forEach(el => {
-    const id = el.dataset.swipeId;
-    const type = el.dataset.swipeType;
-    let startX = 0, startY = 0, isDragging = false, isSwiped = false;
-
-    el.addEventListener('touchstart', e => {
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      isDragging = false;
-    }, { passive: true });
-
-    el.addEventListener('touchmove', e => {
-      const dx = e.touches[0].clientX - startX;
-      const dy = e.touches[0].clientY - startY;
-      if (!isDragging && Math.abs(dy) > Math.abs(dx)) return; // vertical scroll
-      isDragging = true;
-      if (dx < 0) {
-        const clamped = Math.max(dx, -90);
-        el.style.transform = `translateX(${clamped}px)`;
-        el.style.transition = 'none';
-      } else if (isSwiped && dx > 0) {
-        const clamped = Math.min(-90 + dx, 0);
-        el.style.transform = `translateX(${clamped}px)`;
-        el.style.transition = 'none';
+        setTimeout(initSwipe, 0);
       }
-    }, { passive: true });
 
-    el.addEventListener('touchend', e => {
-      if (!isDragging) return;
-      el.style.transition = 'transform 0.25s ease';
-      const dx = e.changedTouches[0].clientX - startX;
-      if (!isSwiped && dx < -40) {
-        el.style.transform = 'translateX(-90px)';
-        isSwiped = true;
-        closeOtherSwipes(id, type);
-      } else if (isSwiped && dx > 40) {
-        el.style.transform = 'translateX(0)';
-        isSwiped = false;
-      } else {
-        el.style.transform = isSwiped ? 'translateX(-90px)' : 'translateX(0)';
+      function addETF() {
+        const tickerEl = document.getElementById("new-ticker-input");
+        const targetEl = document.getElementById("new-target-input");
+        const ticker = tickerEl.value.trim().toUpperCase();
+        const target = parseFloat(targetEl.value) || 0;
+        const currency =
+          document.getElementById("new-currency-input")?.value || "AUD";
+
+        if (!ticker) {
+          toast("Enter a ticker symbol");
+          return;
+        }
+        if (getTickers().includes(ticker)) {
+          toast(ticker + " already exists");
+          return;
+        }
+
+        state.tickers.push(ticker);
+        state.targets[ticker] = target;
+        if (!state.currencies) state.currencies = {};
+        state.currencies[ticker] = currency;
+        save();
+        toast(ticker + " added ✓");
+        renderSettings();
       }
-      swipeState[id + type] = isSwiped;
-    }, { passive: true });
-  });
 
-  // tap outside to close
-  document.addEventListener('touchstart', e => {
-    if (!e.target.closest('.swipe-item') && !e.target.closest('.swipe-delete-bg')) {
-      closeAllSwipes();
-    }
-  }, { passive: true });
-}
+      function toggleCurrency(ticker) {
+        if (!state.currencies) state.currencies = {};
+        state.currencies[ticker] =
+          state.currencies[ticker] === "USD" ? "AUD" : "USD";
+        save();
+        renderSettings();
+      }
 
-function closeOtherSwipes(exceptId, exceptType) {
-  document.querySelectorAll('.swipe-item').forEach(el => {
-    if (el.dataset.swipeId !== exceptId || el.dataset.swipeType !== exceptType) {
-      el.style.transition = 'transform 0.25s ease';
-      el.style.transform = 'translateX(0)';
-      swipeState[el.dataset.swipeId + el.dataset.swipeType] = false;
-    }
-  });
-}
+      function deleteETFConfirm(ticker) {
+        resetSwipe(ticker, "card");
+        deleteETF(ticker);
+      }
 
-function closeAllSwipes() {
-  document.querySelectorAll('.swipe-item').forEach(el => {
-    el.style.transition = 'transform 0.25s ease';
-    el.style.transform = 'translateX(0)';
-  });
-  swipeState = {};
-}
+      function deleteETF(ticker) {
+        const hasTx = state.transactions.some((tx) => tx.ticker === ticker);
+        const msg = hasTx
+          ? `Remove ${ticker}? It has buy history — history will be kept but ${ticker} won't appear on the dashboard.`
+          : `Remove ${ticker}?`;
+        if (!confirm(msg)) return;
+        state.tickers = state.tickers.filter((t) => t !== ticker);
+        delete state.targets[ticker];
+        save();
+        toast(ticker + " removed");
+        renderSettings();
+        renderDashboard();
+      }
 
-function resetSwipe(id, type) {
-  const el = document.querySelector(`[data-swipe-id="${id}"][data-swipe-type="${type}"]`);
-  if (el) { el.style.transform = 'translateX(0)'; }
-  swipeState[id + type] = false;
-}
+      function updateTarget(ticker, val) {
+        state.targets[ticker] = parseFloat(val) || 0;
+        save();
+        refreshTotal();
+      }
 
-// ── Init ─────────────────────────────────────────────────────────────────────
-renderDashboard();
-</script>
-</body>
+      function refreshTotal() {
+        const tot = totalTarget();
+        const el = document.getElementById("total-display");
+        if (el)
+          el.innerHTML = `<span>Total per month</span><span>${fmt(tot)}</span>`;
+        getTickers().forEach((t) => {
+          const pctEl = document.getElementById("pct-" + t);
+          if (!pctEl) return;
+          const tgt =
+            parseFloat(
+              document.querySelector(`#srow-${t} .settings-input`)?.value,
+            ) ||
+            state.targets[t] ||
+            0;
+          pctEl.textContent =
+            tot > 0 ? Math.round((tgt / tot) * 100) + "%" : "0%";
+        });
+      }
+
+      function resetMonth() {
+        const { y, m } = state.viewMonth;
+        const key = monthKey(y, m);
+        if (!confirm(`Clear all buys for ${MONTHS_SHORT[m]} ${y}?`)) return;
+        state.transactions = state.transactions.filter(
+          (tx) => tx.month !== key,
+        );
+        save();
+        toast("Month cleared");
+      }
+
+      function resetTargets() {
+        if (
+          !confirm(
+            "Reset all monthly targets to $0? This won't affect your buy history.",
+          )
+        )
+          return;
+        getTickers().forEach((t) => {
+          state.targets[t] = 0;
+        });
+        save();
+        toast("Targets reset to $0");
+        renderSettings();
+      }
+
+      // ── Swipe to delete ──────────────────────────────────────────────────────────
+      let swipeState = {};
+
+      function initSwipe() {
+        document.querySelectorAll(".swipe-item").forEach((el) => {
+          const id = el.dataset.swipeId;
+          const type = el.dataset.swipeType;
+          let startX = 0,
+            startY = 0,
+            isDragging = false,
+            isSwiped = false;
+
+          el.addEventListener(
+            "touchstart",
+            (e) => {
+              startX = e.touches[0].clientX;
+              startY = e.touches[0].clientY;
+              isDragging = false;
+            },
+            { passive: true },
+          );
+
+          el.addEventListener(
+            "touchmove",
+            (e) => {
+              const dx = e.touches[0].clientX - startX;
+              const dy = e.touches[0].clientY - startY;
+              if (!isDragging && Math.abs(dy) > Math.abs(dx)) return; // vertical scroll
+              isDragging = true;
+              if (dx < 0) {
+                const clamped = Math.max(dx, -90);
+                el.style.transform = `translateX(${clamped}px)`;
+                el.style.transition = "none";
+              } else if (isSwiped && dx > 0) {
+                const clamped = Math.min(-90 + dx, 0);
+                el.style.transform = `translateX(${clamped}px)`;
+                el.style.transition = "none";
+              }
+            },
+            { passive: true },
+          );
+
+          el.addEventListener(
+            "touchend",
+            (e) => {
+              if (!isDragging) return;
+              el.style.transition = "transform 0.25s ease";
+              const dx = e.changedTouches[0].clientX - startX;
+              if (!isSwiped && dx < -40) {
+                el.style.transform = "translateX(-90px)";
+                isSwiped = true;
+                closeOtherSwipes(id, type);
+              } else if (isSwiped && dx > 40) {
+                el.style.transform = "translateX(0)";
+                isSwiped = false;
+              } else {
+                el.style.transform = isSwiped
+                  ? "translateX(-90px)"
+                  : "translateX(0)";
+              }
+              swipeState[id + type] = isSwiped;
+            },
+            { passive: true },
+          );
+        });
+
+        // tap outside to close
+        document.addEventListener(
+          "touchstart",
+          (e) => {
+            if (
+              !e.target.closest(".swipe-item") &&
+              !e.target.closest(".swipe-delete-bg")
+            ) {
+              closeAllSwipes();
+            }
+          },
+          { passive: true },
+        );
+      }
+
+      function closeOtherSwipes(exceptId, exceptType) {
+        document.querySelectorAll(".swipe-item").forEach((el) => {
+          if (
+            el.dataset.swipeId !== exceptId ||
+            el.dataset.swipeType !== exceptType
+          ) {
+            el.style.transition = "transform 0.25s ease";
+            el.style.transform = "translateX(0)";
+            swipeState[el.dataset.swipeId + el.dataset.swipeType] = false;
+          }
+        });
+      }
+
+      function closeAllSwipes() {
+        document.querySelectorAll(".swipe-item").forEach((el) => {
+          el.style.transition = "transform 0.25s ease";
+          el.style.transform = "translateX(0)";
+        });
+        swipeState = {};
+      }
+
+      function resetSwipe(id, type) {
+        const el = document.querySelector(
+          `[data-swipe-id="${id}"][data-swipe-type="${type}"]`,
+        );
+        if (el) {
+          el.style.transform = "translateX(0)";
+        }
+        swipeState[id + type] = false;
+      }
+
+      // ── Init ─────────────────────────────────────────────────────────────────────
+      renderDashboard();
+    </script>
+  </body>
 </html>
