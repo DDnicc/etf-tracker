@@ -315,6 +315,14 @@
   <div class="tx-list" id="tx-list"></div>
 </div>
 
+<!-- Rollover screen -->
+<div id="screen-rollover" class="screen">
+  <div class="screen-header">
+    <span class="screen-title">Rollover</span>
+  </div>
+  <div class="tx-list" id="rollover-content" style="padding:0 16px 90px"></div>
+</div>
+
 <!-- Settings screen -->
 <div id="screen-settings" class="screen">
   <div class="screen-header">
@@ -333,6 +341,9 @@
   </button>
   <button class="nav-item" id="nav-history" onclick="goScreen('history')">
     <span class="nav-icon">≡</span>History
+  </button>
+  <button class="nav-item" id="nav-rollover" onclick="goScreen('rollover')">
+    <span class="nav-icon">↺</span>Rollover
   </button>
   <button class="nav-item" id="nav-settings" onclick="goScreen('settings')">
     <span class="nav-icon">◈</span>Targets
@@ -354,7 +365,8 @@ function defaultState() {
     viewMonth: { y: n.getFullYear(), m: n.getMonth() },
     historyView: 'list',
     holdingTickers: [],
-    holdingBalances: {}
+    holdingBalances: {},
+    rolloverOpeningBalances: {}
   };
 }
 let state;
@@ -365,6 +377,9 @@ try {
   if (!state.currencies) { state.currencies = {}; state.tickers.forEach(t => { state.currencies[t] = 'AUD'; }); }
   if (!state.holdingTickers) state.holdingTickers = [];
   if (!state.holdingBalances) state.holdingBalances = {};
+  if (!state.rolloverOpeningBalances) state.rolloverOpeningBalances = {};
+  // migrate old global rolloverStartBalance if present
+  if (state.rolloverStartBalance !== undefined) { delete state.rolloverStartBalance; }
 } catch(e) { state = defaultState(); }
 
 function save() {
@@ -433,8 +448,10 @@ function regularTickers() { return getTickers().filter(t => !isHolding(t)); }
 function isHolding(ticker) { return state.holdingTickers.includes(ticker); }
 
 // Unspent from previous month across regular ETFs only, chained up to 3 months back
+// Includes per-ticker opening balances
 function getRollover(y, m) {
-  let total = 0;
+  const openingTotal = regularTickers().reduce((a, t) => a + (state.rolloverOpeningBalances[t] || 0), 0);
+  let total = openingTotal;
   for (let i = 1; i <= 3; i++) {
     let ry = y, rm = m - i;
     while (rm < 0) { rm += 12; ry--; }
@@ -443,7 +460,7 @@ function getRollover(y, m) {
     const regularTarget = regularTickers().reduce((a, t) => a + (state.targets[t] || 0), 0);
     const unspent = Math.max(0, regularTarget - regularSpent);
     total += unspent;
-    if (unspent === 0) break; // stop chaining if a month was fully spent
+    if (unspent === 0) break;
   }
   return total;
 }
@@ -484,7 +501,7 @@ function toast(msg) {
 
 // ── Screen routing ───────────────────────────────────────────────────────────
 function goScreen(s) {
-  ['dashboard','buy','confirm','history','settings','edit'].forEach(id => {
+  ['dashboard','buy','confirm','history','settings','edit','rollover'].forEach(id => {
     document.getElementById('screen-'+id).classList.toggle('active', id === s);
     const nav = document.getElementById('nav-'+id);
     if (nav) nav.classList.toggle('active', id === s);
@@ -496,6 +513,7 @@ function goScreen(s) {
   if (s === 'history') renderHistory();
   if (s === 'settings') renderSettings();
   if (s === 'edit') renderEdit();
+  if (s === 'rollover') renderRollover();
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
@@ -913,10 +931,13 @@ function renderHistory() {
 
 function renderCalendar() {
   const now = new Date();
-  const calY = now.getFullYear();
-  const calM = now.getMonth();
+  // Initialise calViewMonth if not set
+  if (!state.calViewMonth) state.calViewMonth = { y: now.getFullYear(), m: now.getMonth() };
+  const calY = state.calViewMonth.y;
+  const calM = state.calViewMonth.m;
+  const isCurrentMonth = calY === now.getFullYear() && calM === now.getMonth();
 
-  // Build tx lookup by date string "D Mon" for current month
+  // Build tx lookup by date string "D Mon" for selected month
   const mk = monthKey(calY, calM);
   const txsByDate = {};
   state.transactions.filter(tx => tx.month === mk).forEach(tx => {
@@ -930,38 +951,39 @@ function renderCalendar() {
 
   // Calendar grid
   let cells = '';
-  // Day headers
   ['S','M','T','W','T','F','S'].forEach(d => {
     cells += `<div class="cal-hdr">${d}</div>`;
   });
-  // Empty cells before first day
   for (let i = 0; i < firstDay; i++) cells += `<div class="cal-cell"></div>`;
 
   for (let d = 1; d <= daysInMonth; d++) {
     const dateObj = new Date(calY, calM, d);
     const dateStr = dateObj.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
     const txs = txsByDate[dateStr] || [];
-    const isToday = d === today;
+    const isToday = isCurrentMonth && d === today;
     const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
     const hasTx = txs.length > 0;
-    const dots = txs.slice(0, 3).map(tx => `<span class="cal-dot" style="background:var(--orange)"></span>`).join('');
+    const dots = txs.slice(0, 3).map(() => `<span class="cal-dot" style="background:var(--orange)"></span>`).join('');
 
     cells += `<div class="cal-cell ${isToday ? 'cal-today' : ''} ${isWeekend ? 'cal-weekend' : ''} ${hasTx ? 'cal-has-tx' : ''}"
-      onclick="${hasTx ? `showCalDay('${dateStr}')` : ''}">
+      onclick="${hasTx ? `showCalDay('${dateStr}','${mk}')` : ''}">
       <span class="cal-day-num">${d}</span>
       <div class="cal-dots">${dots}</div>
     </div>`;
   }
 
-  // Month total
   const monthTxs = state.transactions.filter(tx => tx.month === mk);
   const monthTotal = monthTxs.reduce((a,tx) => a + tx.amount, 0);
 
   document.getElementById('tx-list').innerHTML = `
     <div style="padding:0 16px">
       <div class="cal-month-nav">
-        <span class="cal-month-title">${MONTHS_SHORT[calM]} ${calY}</span>
-        <span class="cal-month-total">${fmt(monthTotal)}</span>
+        <button class="month-nav" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;padding:4px" onclick="calPrevMonth()">‹</button>
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <span class="cal-month-title">${MONTHS_SHORT[calM]} ${calY}</span>
+          <span class="cal-month-total">${fmt(monthTotal)}</span>
+        </div>
+        <button class="month-nav" style="background:none;border:none;color:${isCurrentMonth ? 'var(--text3)' : 'var(--text2)'};font-size:18px;cursor:pointer;padding:4px" onclick="calNextMonth()" ${isCurrentMonth ? 'disabled' : ''}>›</button>
       </div>
       <div class="cal-grid">${cells}</div>
       <div id="cal-day-detail"></div>
@@ -969,9 +991,28 @@ function renderCalendar() {
   `;
 }
 
-function showCalDay(dateStr) {
+function calPrevMonth() {
+  if (!state.calViewMonth) { const n = new Date(); state.calViewMonth = { y: n.getFullYear(), m: n.getMonth() }; }
+  let { y, m } = state.calViewMonth;
+  m--; if (m < 0) { m = 11; y--; }
+  state.calViewMonth = { y, m };
+  save();
+  renderCalendar();
+}
+
+function calNextMonth() {
+  if (!state.calViewMonth) { const n = new Date(); state.calViewMonth = { y: n.getFullYear(), m: n.getMonth() }; }
   const now = new Date();
-  const mk = monthKey(now.getFullYear(), now.getMonth());
+  let { y, m } = state.calViewMonth;
+  if (y === now.getFullYear() && m === now.getMonth()) return;
+  m++; if (m > 11) { m = 0; y++; }
+  state.calViewMonth = { y, m };
+  save();
+  renderCalendar();
+}
+
+function showCalDay(dateStr, mk) {
+  if (!mk) { const now = new Date(); mk = monthKey(now.getFullYear(), now.getMonth()); }
   const txs = state.transactions.filter(tx => tx.month === mk && tx.date === dateStr);
   if (!txs.length) return;
   const rows = txs.map(tx => {
@@ -1096,6 +1137,130 @@ function deleteTx(id) {
   renderHistory();
 }
 
+// ── Rollover ──────────────────────────────────────────────────────────────────
+function renderRollover() {
+  const now = new Date();
+  const regularT = regularTickers();
+  if (regularT.length === 0) {
+    document.getElementById('rollover-content').innerHTML = '<div class="empty-state">No regular items tracked yet.</div>';
+    return;
+  }
+
+  const allMonthKeys = [...new Set(state.transactions.map(tx => tx.month))].sort();
+  if (allMonthKeys.length === 0) {
+    document.getElementById('rollover-content').innerHTML = '<div class="empty-state">No buy history yet. Record some buys to see rollover tracking.</div>';
+    return;
+  }
+
+  // Build month range from earliest tx through current month
+  const firstMk = allMonthKeys[0];
+  const curMk = monthKey(now.getFullYear(), now.getMonth());
+  const months = [];
+  let [fy, fm] = firstMk.split('-').map(Number);
+  fm--;
+  while (true) {
+    months.push({ y: fy, m: fm, key: monthKey(fy, fm) });
+    if (monthKey(fy, fm) === curMk) break;
+    fm++; if (fm > 11) { fm = 0; fy++; }
+  }
+
+  // ── Per-ticker cumulative rollover ──
+  // For each regular ticker, compute: opening + sum of monthly unspent across all months
+  const tickerCumulatives = {}; // ticker → running total by monthKey
+  regularT.forEach(t => {
+    let running = state.rolloverOpeningBalances[t] || 0;
+    tickerCumulatives[t] = {};
+    months.forEach(({ key, y, m }) => {
+      const spent = spentMap(y, m);
+      const unspent = Math.max(0, (state.targets[t] || 0) - (spent[t] || 0));
+      running += unspent;
+      tickerCumulatives[t][key] = running;
+    });
+  });
+
+  // Grand total = sum of each ticker's final cumulative
+  const grandTotal = regularT.reduce((a, t) => {
+    const lastKey = months[months.length - 1].key;
+    return a + (tickerCumulatives[t][lastKey] || 0);
+  }, 0);
+
+  // ── Summary card ──
+  const openingTotal = regularT.reduce((a, t) => a + (state.rolloverOpeningBalances[t] || 0), 0);
+  let html = `
+    <div style="background:var(--surface);border:0.5px solid var(--border);border-left:2px solid var(--blue);border-radius:var(--radius);padding:14px 16px;margin-bottom:20px">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Total available rollover</div>
+      <div style="font-family:var(--mono);font-size:28px;font-weight:300;color:var(--blue)">+${fmt(grandTotal)}</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:4px">${regularT.length} item${regularT.length !== 1 ? 's' : ''} · ${months.length} month${months.length !== 1 ? 's' : ''} tracked</div>
+      ${openingTotal > 0 ? `<div style="font-family:var(--mono);font-size:11px;color:var(--blue);margin-top:6px;padding-top:6px;border-top:0.5px solid var(--border)">incl. ${fmt(openingTotal)} opening balances</div>` : ''}
+    </div>
+  `;
+
+  // ── Per-ticker sections ──
+  regularT.forEach(t => {
+    const opening = state.rolloverOpeningBalances[t] || 0;
+    const lastKey = months[months.length - 1].key;
+    const tickerTotal = tickerCumulatives[t][lastKey] || 0;
+    const tgt = state.targets[t] || 0;
+    const isExpanded = state.rolloverExpanded && state.rolloverExpanded['ticker-' + t];
+
+    // Monthly rows for this ticker (most recent first)
+    let monthRows = '';
+    [...months].reverse().forEach(({ key, y, m }) => {
+      const spent = spentMap(y, m);
+      const s = spent[t] || 0;
+      const unspent = Math.max(0, tgt - s);
+      const pct = tgt > 0 ? Math.round(s / tgt * 100) : 0;
+      const cumul = tickerCumulatives[t][key] || 0;
+      const color = pct >= 100 ? 'var(--blue)' : pct >= 65 ? 'var(--amber)' : 'var(--green)';
+      monthRows += `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--border)">
+          <div>
+            <span style="font-family:var(--mono);font-size:12px;color:var(--text2)">${MONTHS_SHORT[m]} ${y}</span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-left:8px">${fmt(s)} spent</span>
+          </div>
+          <div style="text-align:right">
+            <span style="font-family:var(--mono);font-size:12px;color:${unspent > 0 ? 'var(--amber)' : 'var(--green)'}">
+              ${unspent > 0 ? '+'+fmt(unspent) : '✓'}
+            </span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-left:6px">→ ${fmt(cumul)}</span>
+          </div>
+        </div>`;
+    });
+
+    html += `
+    <div style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer"
+           onclick="toggleRolloverRow('ticker-${t}')">
+        <div>
+          <div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--text)">${t}</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:2px">${fmt(tgt)}/mo target${opening > 0 ? ' · '+fmt(opening)+' opening' : ''}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--mono);font-size:18px;font-weight:300;color:var(--blue)">+${fmt(tickerTotal)}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:2px">available</div>
+        </div>
+      </div>
+      ${isExpanded ? `
+      <div style="padding:0 16px 12px;border-top:0.5px solid var(--border)">
+        ${opening > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border)">
+          <span style="font-family:var(--mono);font-size:12px;color:var(--text3)">Opening balance</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--blue)">+${fmt(opening)}</span>
+        </div>` : ''}
+        ${monthRows}
+      </div>` : ''}
+    </div>`;
+  });
+
+  document.getElementById('rollover-content').innerHTML = html;
+}
+
+function toggleRolloverRow(key) {
+  if (!state.rolloverExpanded) state.rolloverExpanded = {};
+  state.rolloverExpanded[key] = !state.rolloverExpanded[key];
+  save();
+  renderRollover();
+}
+
 // ── Settings ─────────────────────────────────────────────────────────────────
 function renderSettings() {
   const tickers = getTickers();
@@ -1108,6 +1273,7 @@ function renderSettings() {
     const allocPct = tot > 0 ? Math.round(tgt / tot * 100) : 0;
     const holding = isHolding(t);
     const startBal = state.holdingBalances[t] || '';
+    const rolloverOpening = state.rolloverOpeningBalances[t] || '';
     return `
     <div class="swipe-wrap" id="ssw-${t}">
       <div class="swipe-delete-bg">
@@ -1120,9 +1286,15 @@ function renderSettings() {
           placeholder="0" onchange="updateTarget('${t}',this.value)" oninput="refreshTotal()" />
         <span class="alloc-pct" id="pct-${t}">${allocPct}%</span>
         <button class="cur-toggle ${holding ? 'cur-usd' : 'cur-aud'}" style="min-width:56px" onclick="toggleHolding('${t}')">${holding ? 'Hold' : 'Buy'}</button>
-        ${holding ? `<input class="settings-input" style="max-width:100px;flex:none" type="number" inputmode="decimal"
-          value="${startBal}" placeholder="Start bal"
-          onchange="updateHoldingBalance('${t}',this.value)" />` : ''}
+        ${holding
+          ? `<input class="settings-input" style="max-width:100px;flex:none" type="number" inputmode="decimal"
+              value="${startBal}" placeholder="Start bal"
+              onchange="updateHoldingBalance('${t}',this.value)" />`
+          : `<input class="settings-input" style="max-width:90px;flex:none;color:var(--blue)" type="number" inputmode="decimal"
+              value="${rolloverOpening}" placeholder="Rollover $"
+              title="Opening rollover balance for ${t}"
+              onchange="updateRolloverOpening('${t}',this.value)" />`
+        }
       </div>
     </div>`;
   }).join('');
@@ -1148,6 +1320,9 @@ function renderSettings() {
     <div class="settings-section">
       <div id="total-display" class="total-row">
         <span>Total per month</span><span>${fmt(totalTarget())}</span>
+      </div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6;padding:0 2px">
+        <span style="color:var(--blue)">Rollover $</span> — enter any unspent budget you had before you started tracking for each item. Shows in the Rollover tab.
       </div>
     </div>
     <div class="settings-section">
@@ -1199,6 +1374,12 @@ function toggleHolding(ticker) {
   save();
   renderSettings();
   renderDashboard();
+}
+
+function updateRolloverOpening(ticker, val) {
+  if (!state.rolloverOpeningBalances) state.rolloverOpeningBalances = {};
+  state.rolloverOpeningBalances[ticker] = parseFloat(val) || 0;
+  save();
 }
 
 function updateHoldingBalance(ticker, val) {
