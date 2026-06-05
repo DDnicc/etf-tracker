@@ -447,22 +447,47 @@ function totalTarget() { return Object.values(state.targets).reduce((a,b)=>a+b,0
 function regularTickers() { return getTickers().filter(t => !isHolding(t)); }
 function isHolding(ticker) { return state.holdingTickers.includes(ticker); }
 
-// Unspent from previous month across regular ETFs only, chained up to 3 months back
-// Includes per-ticker opening balances
-function getRollover(y, m) {
-  const openingTotal = regularTickers().reduce((a, t) => a + (state.rolloverOpeningBalances[t] || 0), 0);
-  let total = openingTotal;
-  for (let i = 1; i <= 3; i++) {
-    let ry = y, rm = m - i;
-    while (rm < 0) { rm += 12; ry--; }
-    const spent = spentMap(ry, rm);
-    const regularSpent = regularTickers().reduce((a, t) => a + (spent[t] || 0), 0);
-    const regularTarget = regularTickers().reduce((a, t) => a + (state.targets[t] || 0), 0);
-    const unspent = Math.max(0, regularTarget - regularSpent);
-    total += unspent;
-    if (unspent === 0) break;
+// ── FIFO Rollover engine ─────────────────────────────────────────────────────
+// Returns a map of { ticker → runningBalance } at the start of month (y,m)
+// i.e. the balance available *going into* (y,m) before that month's activity.
+// Oldest unspent money consumed first; overspend produces negative balance per ticker.
+function rolloverBalances(y, m) {
+  const regularT = regularTickers();
+  const targetMk = monthKey(y, m);
+
+  // Collect all month keys from opening of history up to (but not including) (y,m)
+  const allMks = [...new Set(state.transactions.map(tx => tx.month))].sort();
+  // Also include months between first tx and targetMk that may have no txs
+  const months = [];
+  if (allMks.length > 0) {
+    let [fy, fm] = allMks[0].split('-').map(Number);
+    fm--;
+    while (true) {
+      const k = monthKey(fy, fm);
+      if (k >= targetMk) break;
+      months.push({ y: fy, m: fm, key: k });
+      fm++; if (fm > 11) { fm = 0; fy++; }
+    }
   }
-  return total;
+
+  const balances = {};
+  regularT.forEach(t => {
+    let running = state.rolloverOpeningBalances[t] || 0;
+    months.forEach(({ y: my, m: mm }) => {
+      const spent = spentMap(my, mm);
+      // net = target − spent; can be negative (overspend)
+      const net = (state.targets[t] || 0) - (spent[t] || 0);
+      running += net;
+    });
+    balances[t] = running;
+  });
+  return balances;
+}
+
+// Total rollover going into (y,m) — used by dashboard
+function getRollover(y, m) {
+  const balances = rolloverBalances(y, m);
+  return Object.values(balances).reduce((a, b) => a + b, 0);
 }
 
 // Holding pool = starting balance + all monthly targets accrued - all buys ever recorded
@@ -583,10 +608,10 @@ function renderDashboard() {
   closeAllSwipes();
   const tradeDays = tradeDaysLeft(y, m);
   const isCurrentMonth = y === now.getFullYear() && m === now.getMonth();
-  const rolloverBar = rollover > 0 ? `
-    <div class="trade-days-bar" style="border-left-color:var(--blue)">
-      <span class="trade-days-label">Rolled over</span>
-      <span class="trade-days-count" style="color:var(--blue);font-size:18px">+${fmt(rollover)}</span>
+  const rolloverBar = rollover !== 0 ? `
+    <div class="trade-days-bar" style="border-left-color:${rollover >= 0 ? 'var(--blue)' : 'var(--red)'}">
+      <span class="trade-days-label">${rollover >= 0 ? 'Rolled over' : 'Overspend carried'}</span>
+      <span class="trade-days-count" style="color:${rollover >= 0 ? 'var(--blue)' : 'var(--red)'};font-size:18px">${rollover >= 0 ? '+' : ''}${fmt(rollover)}</span>
     </div>` : '';
 
   document.getElementById('dashboard-content').innerHTML = `
@@ -769,6 +794,7 @@ function saveBuy() {
     currency: pendingBuy.currency || 'AUD',
     month: txMonth,
     date: buyD.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }),
+    isoDate: pendingBuy.buyDate || null,
     id: generateId()
   });
   save();
@@ -820,7 +846,7 @@ function renderEdit() {
     </div>
     <div class="field">
       <label>Date</label>
-      <input type="text" id="edit-date" placeholder="e.g. 9 May" value="${tx.date}" />
+      <input type="date" id="edit-date" value="${tx.isoDate || ''}" />
     </div>
     <div class="btn-row" style="margin-top:8px">
       <button class="btn" onclick="goScreen('history')">Cancel</button>
@@ -846,7 +872,7 @@ function saveEdit() {
   const ticker = document.getElementById('edit-ticker').value;
   const amount = parseFloat(document.getElementById('edit-amount').value);
   const units = parseFloat(document.getElementById('edit-units').value) || null;
-  const date = document.getElementById('edit-date').value.trim();
+  const isoDate = document.getElementById('edit-date').value; // YYYY-MM-DD
   const cur = editCurrency || tx.currency || 'AUD';
 
   if (!amount || amount <= 0) { toast('Enter a valid amount'); return; }
@@ -855,7 +881,12 @@ function saveEdit() {
   tx.amount = amount;
   tx.units = units;
   tx.currency = cur;
-  if (date) tx.date = date;
+  if (isoDate) {
+    const d = new Date(isoDate + 'T00:00:00');
+    tx.isoDate = isoDate;
+    tx.date = d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+    tx.month = monthKey(d.getFullYear(), d.getMonth());
+  }
 
   save();
   editingId = null;
@@ -1164,16 +1195,16 @@ function renderRollover() {
     fm++; if (fm > 11) { fm = 0; fy++; }
   }
 
-  // ── Per-ticker cumulative rollover ──
-  // For each regular ticker, compute: opening + sum of monthly unspent across all months
-  const tickerCumulatives = {}; // ticker → running total by monthKey
+  // ── Per-ticker FIFO cumulative rollover ──
+  // running balance after each month (net = target − spent, can be negative)
+  const tickerCumulatives = {}; // ticker → { monthKey: runningBalance }
   regularT.forEach(t => {
     let running = state.rolloverOpeningBalances[t] || 0;
     tickerCumulatives[t] = {};
     months.forEach(({ key, y, m }) => {
       const spent = spentMap(y, m);
-      const unspent = Math.max(0, (state.targets[t] || 0) - (spent[t] || 0));
-      running += unspent;
+      const net = (state.targets[t] || 0) - (spent[t] || 0);
+      running += net;
       tickerCumulatives[t][key] = running;
     });
   });
@@ -1186,12 +1217,15 @@ function renderRollover() {
 
   // ── Summary card ──
   const openingTotal = regularT.reduce((a, t) => a + (state.rolloverOpeningBalances[t] || 0), 0);
+  const isNegative = grandTotal < 0;
   let html = `
-    <div style="background:var(--surface);border:0.5px solid var(--border);border-left:2px solid var(--blue);border-radius:var(--radius);padding:14px 16px;margin-bottom:20px">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Total available rollover</div>
-      <div style="font-family:var(--mono);font-size:28px;font-weight:300;color:var(--blue)">+${fmt(grandTotal)}</div>
+    <div style="background:var(--surface);border:0.5px solid var(--border);border-left:2px solid ${isNegative ? 'var(--red)' : 'var(--blue)'};border-radius:var(--radius);padding:14px 16px;margin-bottom:20px">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">${isNegative ? 'Overspend carried' : 'Total available rollover'}</div>
+      <div style="font-family:var(--mono);font-size:28px;font-weight:300;color:${isNegative ? 'var(--red)' : 'var(--blue)'}">
+        ${grandTotal >= 0 ? '+' : ''}${fmt(grandTotal)}
+      </div>
       <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:4px">${regularT.length} item${regularT.length !== 1 ? 's' : ''} · ${months.length} month${months.length !== 1 ? 's' : ''} tracked</div>
-      ${openingTotal > 0 ? `<div style="font-family:var(--mono);font-size:11px;color:var(--blue);margin-top:6px;padding-top:6px;border-top:0.5px solid var(--border)">incl. ${fmt(openingTotal)} opening balances</div>` : ''}
+      ${openingTotal !== 0 ? `<div style="font-family:var(--mono);font-size:11px;color:var(--blue);margin-top:6px;padding-top:6px;border-top:0.5px solid var(--border)">incl. ${fmt(openingTotal)} opening balances</div>` : ''}
     </div>
   `;
 
@@ -1202,16 +1236,20 @@ function renderRollover() {
     const tickerTotal = tickerCumulatives[t][lastKey] || 0;
     const tgt = state.targets[t] || 0;
     const isExpanded = state.rolloverExpanded && state.rolloverExpanded['ticker-' + t];
+    const tickerNeg = tickerTotal < 0;
 
     // Monthly rows for this ticker (most recent first)
     let monthRows = '';
     [...months].reverse().forEach(({ key, y, m }) => {
       const spent = spentMap(y, m);
       const s = spent[t] || 0;
-      const unspent = Math.max(0, tgt - s);
-      const pct = tgt > 0 ? Math.round(s / tgt * 100) : 0;
+      const net = tgt - s; // negative = overspend
       const cumul = tickerCumulatives[t][key] || 0;
-      const color = pct >= 100 ? 'var(--blue)' : pct >= 65 ? 'var(--amber)' : 'var(--green)';
+      const pctVal = tgt > 0 ? Math.round(s / tgt * 100) : 0;
+      const isOver = net < 0;
+      const netColor = isOver ? 'var(--red)' : net > 0 ? 'var(--amber)' : 'var(--green)';
+      const netLabel = isOver ? fmt(Math.abs(net)) + ' over' : net > 0 ? '+' + fmt(net) : '✓';
+      const cumulColor = cumul < 0 ? 'var(--red)' : 'var(--text3)';
       monthRows += `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--border)">
           <div>
@@ -1219,10 +1257,8 @@ function renderRollover() {
             <span style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-left:8px">${fmt(s)} spent</span>
           </div>
           <div style="text-align:right">
-            <span style="font-family:var(--mono);font-size:12px;color:${unspent > 0 ? 'var(--amber)' : 'var(--green)'}">
-              ${unspent > 0 ? '+'+fmt(unspent) : '✓'}
-            </span>
-            <span style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-left:6px">→ ${fmt(cumul)}</span>
+            <span style="font-family:var(--mono);font-size:12px;color:${netColor}">${netLabel}</span>
+            <span style="font-family:var(--mono);font-size:10px;color:${cumulColor};margin-left:6px">→ ${cumul >= 0 ? '+' : ''}${fmt(cumul)}</span>
           </div>
         </div>`;
     });
@@ -1233,18 +1269,22 @@ function renderRollover() {
            onclick="toggleRolloverRow('ticker-${t}')">
         <div>
           <div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--text)">${t}</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:2px">${fmt(tgt)}/mo target${opening > 0 ? ' · '+fmt(opening)+' opening' : ''}</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:2px">${fmt(tgt)}/mo target${opening !== 0 ? ' · ' + fmt(opening) + ' opening' : ''}</div>
         </div>
         <div style="text-align:right">
-          <div style="font-family:var(--mono);font-size:18px;font-weight:300;color:var(--blue)">+${fmt(tickerTotal)}</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:2px">available</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:300;color:${tickerNeg ? 'var(--red)' : 'var(--blue)'}">
+            ${tickerTotal >= 0 ? '+' : ''}${fmt(tickerTotal)}
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:2px">${tickerNeg ? 'overspent' : 'available'}</div>
         </div>
       </div>
       ${isExpanded ? `
       <div style="padding:0 16px 12px;border-top:0.5px solid var(--border)">
-        ${opening > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border)">
+        ${opening !== 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border)">
           <span style="font-family:var(--mono);font-size:12px;color:var(--text3)">Opening balance</span>
-          <span style="font-family:var(--mono);font-size:12px;color:var(--blue)">+${fmt(opening)}</span>
+          <span style="font-family:var(--mono);font-size:12px;color:${opening < 0 ? 'var(--red)' : 'var(--blue)'}">
+            ${opening >= 0 ? '+' : ''}${fmt(opening)}
+          </span>
         </div>` : ''}
         ${monthRows}
       </div>` : ''}
