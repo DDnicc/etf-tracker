@@ -86,6 +86,7 @@
   .fill-warn { background: var(--orange); }
   .fill-done { background: var(--orange); }
   .card-bottom { display: flex; justify-content: space-between; font-size: 12px; }
+  .card-avg { font-size: 11px; color: var(--text3); margin-top: 6px; font-family: var(--font); }
   .card-spent { color: var(--text2); font-family: var(--font); }
   .card-remaining { color: var(--text3); font-family: var(--font); }
 
@@ -382,6 +383,7 @@ function defaultState() {
     holdingTickers: [],
     holdingBalances: {},
     rolloverOpeningBalances: {},
+    archivedTickers: [],
     usdToAud: 1.55
   };
 }
@@ -394,9 +396,19 @@ try {
   if (!state.holdingTickers) state.holdingTickers = [];
   if (!state.holdingBalances) state.holdingBalances = {};
   if (!state.rolloverOpeningBalances) state.rolloverOpeningBalances = {};
+  if (!state.archivedTickers) state.archivedTickers = [];
   if (state.usdToAud == null) state.usdToAud = 1.55;
   // migrate old global rolloverStartBalance if present
   if (state.rolloverStartBalance !== undefined) { delete state.rolloverStartBalance; }
+  // migrate flat targets into per-month target history (one entry = the value was in effect since the earliest tracked month)
+  if (!state.targetHistory) {
+    state.targetHistory = {};
+    const allMonths = state.transactions.map(tx => tx.month).filter(Boolean).sort();
+    const baseMonth = allMonths.length ? allMonths[0] : monthKey(new Date().getFullYear(), new Date().getMonth());
+    Object.keys(state.targets).forEach(t => {
+      state.targetHistory[t] = [{ month: baseMonth, value: state.targets[t] || 0 }];
+    });
+  }
 } catch(e) { state = defaultState(); }
 
 function save() {
@@ -411,6 +423,21 @@ function fmt(n) { return '$' + Math.round(n).toLocaleString('en-AU'); }
 function fmtCurrency(n, cur) { return (cur === 'USD' ? 'US$' : '$') + n.toLocaleString('en-AU', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 function getCurrency(ticker) { return (state.currencies && state.currencies[ticker]) || 'AUD'; }
 function convertToAUD(amount, currency) { return currency === 'USD' ? amount * (state.usdToAud || 1.55) : amount; }
+
+function avgCostBasis(ticker) {
+  const txs = state.transactions.filter(tx => tx.ticker === ticker && tx.units > 0);
+  if (!txs.length) return null;
+  let totalAUD = 0, totalUnits = 0;
+  txs.forEach(tx => {
+    totalAUD += convertToAUD(tx.amount, tx.currency || 'AUD');
+    totalUnits += tx.units;
+  });
+  if (totalUnits <= 0) return null;
+  const cur = getCurrency(ticker);
+  const avgAUD = totalAUD / totalUnits;
+  const avg = cur === 'USD' ? avgAUD / (state.usdToAud || 1.55) : avgAUD;
+  return { avg, currency: cur, totalUnits };
+}
 function sanitizeTicker(s) { return s.replace(/[^A-Za-z0-9.\-]/g, '').toUpperCase().slice(0, 10); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function monthKey(y, m) { return `${y}-${String(m+1).padStart(2,'0')}`; }
@@ -434,6 +461,17 @@ function generateId() {
   return datePart + '-' + seq;
 }
 
+// National AU public holidays only (no state-specific or ASX-specific extras) — approximate, covers a few years around "now"
+const AU_HOLIDAYS = new Set([
+  '2025-01-01','2025-01-27','2025-04-18','2025-04-21','2025-04-25','2025-12-25','2025-12-26',
+  '2026-01-01','2026-01-26','2026-04-03','2026-04-06','2026-04-27','2026-12-25','2026-12-28',
+  '2027-01-01','2027-01-26','2027-03-26','2027-03-29','2027-04-26','2027-12-27','2027-12-28'
+]);
+function isAuHoliday(d) {
+  const iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  return AU_HOLIDAYS.has(iso);
+}
+
 function tradeDaysLeft(y, m) {
   const now = new Date();
   const isCurrentMonth = y === now.getFullYear() && m === now.getMonth();
@@ -443,7 +481,7 @@ function tradeDaysLeft(y, m) {
   const cur = new Date(start);
   while (cur <= lastDay) {
     const dow = cur.getDay();
-    if (dow !== 0 && dow !== 6) count++; // skip Sat/Sun
+    if (dow !== 0 && dow !== 6 && !isAuHoliday(cur)) count++; // skip Sat/Sun/public holidays
     cur.setDate(cur.getDate() + 1);
   }
   // subtract today if already past 4pm AEST (market closed) — approximate
@@ -463,6 +501,64 @@ function spentMap(y, m) {
 }
 
 function totalTarget() { return Object.values(state.targets).reduce((a,b)=>a+b,0); }
+
+// ── Target history ──────────────────────────────────────────────────────────
+// Changing a target only applies from the month it's changed in onward; past
+// months keep whatever target was in effect at the time.
+function setTargetHistory(ticker, month, value) {
+  if (!state.targetHistory) state.targetHistory = {};
+  if (!state.targetHistory[ticker]) state.targetHistory[ticker] = [];
+  const hist = state.targetHistory[ticker];
+  const existing = hist.find(e => e.month === month);
+  if (existing) existing.value = value;
+  else { hist.push({ month, value }); hist.sort((a,b) => a.month.localeCompare(b.month)); }
+}
+
+function targetForMonth(ticker, y, m) {
+  const key = monthKey(y, m);
+  const hist = state.targetHistory && state.targetHistory[ticker];
+  if (!hist || hist.length === 0) return state.targets[ticker] || 0;
+  let value = hist[0].value;
+  for (const e of hist) {
+    if (e.month <= key) value = e.value;
+    else break;
+  }
+  return value;
+}
+
+function toggleTargetHistory(ticker) {
+  if (!state.expandedTargetHistory) state.expandedTargetHistory = {};
+  state.expandedTargetHistory[ticker] = !state.expandedTargetHistory[ticker];
+  save();
+  renderSettings();
+}
+
+function scheduleTargetChange(ticker) {
+  const monthEl = document.getElementById('sched-month-' + ticker);
+  const valEl = document.getElementById('sched-val-' + ticker);
+  if (!monthEl || !valEl) return;
+  const monthVal = monthEl.value;
+  const val = parseFloat(valEl.value);
+  const curMk = monthKey(new Date().getFullYear(), new Date().getMonth());
+  if (!monthVal) { toast('Pick a month'); return; }
+  if (monthVal < curMk) { toast('Pick the current month or a future one'); return; }
+  if (isNaN(val) || val < 0) { toast('Enter a valid target amount'); return; }
+  setTargetHistory(ticker, monthVal, val);
+  if (monthVal === curMk) state.targets[ticker] = val; // keep the quick-edit field in sync
+  save();
+  toast(monthVal === curMk ? 'Target updated' : `Target change scheduled for ${monthVal}`);
+  renderSettings();
+}
+
+function deleteTargetHistoryEntry(ticker, month) {
+  const hist = state.targetHistory && state.targetHistory[ticker];
+  if (!hist || hist.length <= 1) { toast("Can't remove the only history entry"); return; }
+  state.targetHistory[ticker] = hist.filter(e => e.month !== month);
+  const now = new Date();
+  state.targets[ticker] = targetForMonth(ticker, now.getFullYear(), now.getMonth());
+  save();
+  renderSettings();
+}
 
 function regularTickers() { return getTickers().filter(t => !isHolding(t)); }
 function isHolding(ticker) { return state.holdingTickers.includes(ticker); }
@@ -496,7 +592,7 @@ function rolloverBalances(y, m) {
     months.forEach(({ y: my, m: mm }) => {
       const spent = spentMap(my, mm);
       // net = target − spent; can be negative (overspend)
-      const net = (state.targets[t] || 0) - (spent[t] || 0);
+      const net = targetForMonth(t, my, mm) - (spent[t] || 0);
       running += net;
     });
     balances[t] = running;
@@ -520,10 +616,12 @@ function getHoldingBalance(ticker, asOfY, asOfM) {
   const rm = asOfM != null ? asOfM : refNow.getMonth(); // 0-based
   let accrued = 0;
   if (holdingStart) {
-    const [sy, sm] = holdingStart.split('-').map(Number);
-    // sm from holdingStart is 1-based (monthKey stores m+1)
-    const totalMonths = (ry - sy) * 12 + (rm - (sm - 1));
-    accrued = Math.max(0, totalMonths) * (state.targets[ticker] || 0);
+    const [sy, smRaw] = holdingStart.split('-').map(Number);
+    let cy = sy, cm = smRaw - 1; // sm from holdingStart is 1-based (monthKey stores m+1)
+    while (monthKey(cy, cm) <= monthKey(ry, rm)) {
+      accrued += targetForMonth(ticker, cy, cm);
+      cm++; if (cm > 11) { cm = 0; cy++; }
+    }
   }
   const totalBought = state.transactions
     .filter(tx => tx.ticker === ticker)
@@ -553,8 +651,9 @@ function showConfirm(message, onConfirm) {
 
 function executeConfirm() {
   clearTimeout(_confirmTimer);
+  const fn = _confirmCallback;
   dismissConfirm();
-  if (_confirmCallback) { const fn = _confirmCallback; _confirmCallback = null; fn(); }
+  if (fn) fn();
 }
 
 function dismissConfirm() {
@@ -588,6 +687,33 @@ function goScreen(s) {
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
+function renderTrendStrip(endY, endM, months = 6) {
+  const regularT = regularTickers();
+  const data = [];
+  let y = endY, m = endM;
+  for (let i = 0; i < months; i++) {
+    const spent = spentMap(y, m);
+    const s = regularT.reduce((a, t) => a + (spent[t] || 0), 0);
+    const tg = regularT.reduce((a, t) => a + targetForMonth(t, y, m), 0);
+    data.unshift({ y, m, s, tg });
+    m--; if (m < 0) { m = 11; y--; }
+  }
+  if (regularT.length === 0 || data.every(d => d.tg === 0 && d.s === 0)) return '';
+  const bars = data.map(d => {
+    const p = pct(d.s, d.tg);
+    const over = d.tg > 0 && d.s > d.tg;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <span style="width:30px;font-family:var(--font);font-size:10px;color:var(--text3)">${MONTHS_SHORT[d.m]}</span>
+      <div class="card-bar-bg" style="flex:1;margin-bottom:0"><div class="card-bar-fill" style="width:${p}%;background:${over ? 'var(--red)' : 'var(--orange)'}"></div></div>
+      <span style="width:34px;text-align:right;font-family:var(--font);font-size:10px;color:var(--text3)">${p}%</span>
+    </div>`;
+  }).join('');
+  return `<div class="trade-days-bar" style="flex-direction:column;align-items:stretch;gap:8px;margin-bottom:16px">
+    <span class="trade-days-label">Last ${months} months</span>
+    <div style="padding-top:2px">${bars}</div>
+  </div>`;
+}
+
 function renderDashboard() {
   const { y, m } = state.viewMonth;
   const now = new Date();
@@ -596,7 +722,7 @@ function renderDashboard() {
 
   const spent = spentMap(y, m);
   const regularSpent = regularTickers().reduce((a, t) => a + (spent[t] || 0), 0);
-  const regularTarget = regularTickers().reduce((a, t) => a + (state.targets[t] || 0), 0);
+  const regularTarget = regularTickers().reduce((a, t) => a + targetForMonth(t, y, m), 0);
   const rollover = getRollover(y, m);
   const effectiveBudget = regularTarget + rollover;
   const overall = pct(regularSpent, effectiveBudget);
@@ -609,12 +735,14 @@ function renderDashboard() {
   let ringColor = '#ec3013';
 
   const cards = getTickers().map(t => {
+    const costBasis = avgCostBasis(t);
+    const avgLine = costBasis ? `<div class="card-avg">Avg ${fmtCurrency(costBasis.avg, costBasis.currency)}/unit · ${costBasis.totalUnits.toFixed(3)} units</div>` : '';
     if (isHolding(t)) {
       const pool = getHoldingBalance(t, y, m);
-      const monthlyAdd = state.targets[t] || 0;
+      const monthlyAdd = targetForMonth(t, y, m);
       return `<div class="swipe-wrap" id="sw-${esc(t)}">
         <div class="swipe-delete-bg">
-          <button class="swipe-delete-action" onclick="deleteETFConfirm(${esc(JSON.stringify(t))})">Delete</button>
+          <button class="swipe-delete-action" onclick="archiveETFConfirm(${esc(JSON.stringify(t))})">Archive</button>
         </div>
         <div class="etf-card swipe-item" id="card-${esc(t)}" onclick="prefillBuy(${esc(JSON.stringify(t))})" data-swipe-id="${esc(t)}" data-swipe-type="card">
           <div class="card-top">
@@ -626,16 +754,17 @@ function renderDashboard() {
             <span class="card-spent">${fmt(pool)} available</span>
             <span class="card-remaining">+${fmt(monthlyAdd)}/mo</span>
           </div>
+          ${avgLine}
         </div>
       </div>`;
     }
-    const s = spent[t], tg = state.targets[t];
+    const s = spent[t], tg = targetForMonth(t, y, m);
     const st = statusOf(s, tg);
     const p = pct(s, tg);
     const rem = Math.max(0, tg - s);
     return `<div class="swipe-wrap" id="sw-${esc(t)}">
       <div class="swipe-delete-bg">
-        <button class="swipe-delete-action" onclick="deleteETFConfirm(${esc(JSON.stringify(t))})">Delete</button>
+        <button class="swipe-delete-action" onclick="archiveETFConfirm(${esc(JSON.stringify(t))})">Archive</button>
       </div>
       <div class="etf-card swipe-item" id="card-${esc(t)}" onclick="prefillBuy(${esc(JSON.stringify(t))})" data-swipe-id="${esc(t)}" data-swipe-type="card">
         <div class="card-top">
@@ -647,6 +776,7 @@ function renderDashboard() {
           <span class="card-spent">${fmt(s)} spent</span>
           <span class="card-remaining">${rem > 0 ? fmt(rem)+' left' : 'target met'}</span>
         </div>
+        ${avgLine}
       </div>
     </div>`;
   }).join('');
@@ -691,6 +821,7 @@ function renderDashboard() {
         </div>
       </div>
     </div>
+    ${renderTrendStrip(y, m)}
     ${cards}
     <button class="clear-month-btn" onclick="resetMonth()" style="margin-top:4px">Clear ${MONTHS_SHORT[m]} ${y} buys</button>
   `;
@@ -726,7 +857,7 @@ function renderBuy() {
   const suggestions = getTickers()
     .map(t => {
       if (isHolding(t)) return { ticker: t, rem: getHoldingBalance(t, y, m), label: 'pool', isHolding: true };
-      return { ticker: t, rem: Math.max(0, state.targets[t] - spent[t]), label: 'left', isHolding: false };
+      return { ticker: t, rem: Math.max(0, targetForMonth(t, y, m) - spent[t]), label: 'left', isHolding: false };
     })
     .filter(x => x.rem > 0)
     .sort((a, b) => b.rem - a.rem)
@@ -785,8 +916,29 @@ function reviewBuy() {
   const buyDateVal = document.getElementById('buy-date')?.value || '';
   if (!units || units <= 0) { toast('Enter units bought to continue'); return; }
   if (!amt || amt <= 0) { toast('Enter the amount paid to continue'); return; }
-  pendingBuy = { ticker, amount: amt, units, currency: getCurrency(ticker), buyDate: buyDateVal };
-  goScreen('confirm');
+
+  const proceed = () => {
+    pendingBuy = { ticker, amount: amt, units, currency: getCurrency(ticker), buyDate: buyDateVal };
+    goScreen('confirm');
+  };
+
+  const dup = state.transactions.find(tx => tx.ticker === ticker && tx.isoDate === buyDateVal && Math.abs(tx.amount - amt) < 0.01);
+  if (dup) {
+    showConfirm(`You already logged a ${fmtCurrency(amt, getCurrency(ticker))} ${ticker} buy on ${formatDisplayDate(buyDateVal)}. Log it again?`, proceed);
+    return;
+  }
+
+  if (!isHolding(ticker)) {
+    const { y, m } = state.viewMonth;
+    const spent = spentMap(y, m)[ticker] || 0;
+    const tg = targetForMonth(ticker, y, m);
+    if (tg > 0 && (spent + convertToAUD(amt, getCurrency(ticker))) > tg * 1.5) {
+      showConfirm(`This pushes ${ticker} well past its ${fmt(tg)} target for the month. Continue?`, proceed);
+      return;
+    }
+  }
+
+  proceed();
 }
 
 function renderConfirm() {
@@ -812,7 +964,7 @@ function renderConfirm() {
 
   const spent = spentMap(y, m);
   const s = spent[ticker];
-  const tg = state.targets[ticker];
+  const tg = targetForMonth(ticker, y, m);
   const newSpent = s + pendingBuy.amount;
   const newRem = Math.max(0, tg - newSpent);
 
@@ -951,6 +1103,29 @@ function setHistoryView(v) {
   renderHistory();
 }
 
+function getAllEverTickers() {
+  return [...new Set(state.transactions.map(tx => tx.ticker))].sort();
+}
+
+function renderHistoryFilterBar() {
+  const all = getAllEverTickers();
+  if (all.length === 0) return '';
+  const sel = state.historyFilterTicker || '';
+  return `<div style="padding:0 16px 10px">
+    <select id="history-ticker-filter" onchange="setHistoryTickerFilter(this.value)"
+      style="width:100%;background:var(--surface);border:1px solid var(--border2);padding:9px 10px;font-size:13px;color:var(--text);font-family:var(--font)">
+      <option value="">All ETFs</option>
+      ${all.map(t => `<option value="${esc(t)}" ${t === sel ? 'selected' : ''}>${esc(t)}</option>`).join('')}
+    </select>
+  </div>`;
+}
+
+function setHistoryTickerFilter(val) {
+  state.historyFilterTicker = val;
+  save();
+  renderHistory();
+}
+
 function renderHistory() {
   // sync toggle state
   setTimeout(() => {
@@ -960,9 +1135,12 @@ function renderHistory() {
     if (btn) btn.classList.add('active');
   }, 0);
   if ((state.historyView || 'list') === 'calendar') { renderCalendar(); return; }
-  const txs = [...state.transactions].reverse();
+  const filterT = state.historyFilterTicker;
+  const filterBar = renderHistoryFilterBar();
+  let txs = [...state.transactions].reverse();
+  if (filterT) txs = txs.filter(tx => tx.ticker === filterT);
   if (txs.length === 0) {
-    document.getElementById('tx-list').innerHTML = '<div class="empty-state">No buys recorded yet.</div>';
+    document.getElementById('tx-list').innerHTML = filterBar + `<div class="empty-state">${filterT ? 'No buys for ' + esc(filterT) + ' yet.' : 'No buys recorded yet.'}</div>`;
     return;
   }
 
@@ -973,7 +1151,7 @@ function renderHistory() {
     groups[tx.month].push(tx);
   });
 
-  let html = '';
+  let html = filterBar;
   Object.keys(groups).sort().reverse().forEach(mk => {
     const [y, mo] = mk.split('-').map(Number);
     const label = MONTHS_SHORT[mo-1] + ' ' + y;
@@ -1014,10 +1192,12 @@ function renderCalendar() {
   const calM = state.calViewMonth.m;
   const isCurrentMonth = calY === now.getFullYear() && calM === now.getMonth();
 
+  const filterT = state.historyFilterTicker;
+
   // Build tx lookup by ISO date (YYYY-MM-DD) for selected month
   const mk = monthKey(calY, calM);
   const txsByDate = {};
-  state.transactions.filter(tx => tx.month === mk).forEach(tx => {
+  state.transactions.filter(tx => tx.month === mk && (!filterT || tx.ticker === filterT)).forEach(tx => {
     if (!tx.isoDate) return; // old transactions without isoDate gracefully skipped
     if (!txsByDate[tx.isoDate]) txsByDate[tx.isoDate] = [];
     txsByDate[tx.isoDate].push(tx);
@@ -1050,10 +1230,10 @@ function renderCalendar() {
     </div>`;
   }
 
-  const monthTxs = state.transactions.filter(tx => tx.month === mk);
+  const monthTxs = state.transactions.filter(tx => tx.month === mk && (!filterT || tx.ticker === filterT));
   const monthTotal = monthTxs.reduce((a,tx) => a + tx.amount, 0);
 
-  document.getElementById('tx-list').innerHTML = `
+  document.getElementById('tx-list').innerHTML = renderHistoryFilterBar() + `
     <div style="padding:0 16px">
       <div class="cal-month-nav">
         <button class="month-nav" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;padding:4px" onclick="calPrevMonth()">‹</button>
@@ -1091,7 +1271,8 @@ function calNextMonth() {
 
 function showCalDay(isoDate, mk) {
   if (!mk) { const now = new Date(); mk = monthKey(now.getFullYear(), now.getMonth()); }
-  const txs = state.transactions.filter(tx => tx.month === mk && tx.isoDate === isoDate);
+  const filterT = state.historyFilterTicker;
+  const txs = state.transactions.filter(tx => tx.month === mk && tx.isoDate === isoDate && (!filterT || tx.ticker === filterT));
   if (!txs.length) return;
   const rows = txs.map(tx => {
     const unitPrice = tx.units && tx.amount ? tx.amount / tx.units : null;
@@ -1118,6 +1299,45 @@ function showCalDay(isoDate, mk) {
     <div class="cal-detail-label">${formatDisplayDate(isoDate)}</div>
     ${rows}
   `;
+}
+
+function exportState() {
+  const json = JSON.stringify(state, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const now = new Date();
+  a.download = `etf-tracker-backup-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Backup downloaded ✓');
+}
+
+function importState(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    let parsed;
+    try { parsed = JSON.parse(e.target.result); } catch(err) { toast('Could not read backup file'); return; }
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.transactions) || !parsed.targets) {
+      toast('Invalid backup file'); return;
+    }
+    showConfirm('Restore from this backup? It replaces all current data.', () => {
+      state = parsed;
+      if (!state.targetHistory) state.targetHistory = {};
+      if (!state.archivedTickers) state.archivedTickers = [];
+      save();
+      toast('Backup restored ✓');
+      renderSettings();
+      renderDashboard();
+    });
+  };
+  reader.readAsText(file);
+  event.target.value = '';
 }
 
 function exportCSV() {
@@ -1277,7 +1497,7 @@ function renderRollover() {
     tickerCumulatives[t] = {};
     months.forEach(({ key, y, m }) => {
       const spent = spentMap(y, m);
-      const net = (state.targets[t] || 0) - (spent[t] || 0);
+      const net = targetForMonth(t, y, m) - (spent[t] || 0);
       running += net;
       tickerCumulatives[t][key] = running;
     });
@@ -1317,9 +1537,10 @@ function renderRollover() {
     [...months].reverse().forEach(({ key, y, m }) => {
       const spent = spentMap(y, m);
       const s = spent[t] || 0;
-      const net = tgt - s; // negative = overspend
+      const monthTgt = targetForMonth(t, y, m);
+      const net = monthTgt - s; // negative = overspend
       const cumul = tickerCumulatives[t][key] || 0;
-      const pctVal = tgt > 0 ? Math.round(s / tgt * 100) : 0;
+      const pctVal = monthTgt > 0 ? Math.round(s / monthTgt * 100) : 0;
       const isOver = net < 0;
       const netColor = isOver ? 'var(--red)' : net > 0 ? 'var(--amber)' : 'var(--green)';
       const netLabel = isOver ? fmt(Math.abs(net)) + ' over' : net > 0 ? '+' + fmt(net) : '✓';
@@ -1379,6 +1600,7 @@ function toggleRolloverRow(key) {
 function renderSettings() {
   const tickers = getTickers();
   const { y, m } = state.viewMonth;
+  const curMk = monthKey(new Date().getFullYear(), new Date().getMonth());
 
   const tot = totalTarget();
   const rows = tickers.map(t => {
@@ -1388,10 +1610,28 @@ function renderSettings() {
     const holding = isHolding(t);
     const startBal = state.holdingBalances[t] || '';
     const rolloverOpening = state.rolloverOpeningBalances[t] || '';
+    const hist = (state.targetHistory && state.targetHistory[t]) || [];
+    const histExpanded = state.expandedTargetHistory && state.expandedTargetHistory[t];
+    const histPanel = histExpanded ? `
+      <div style="width:100%;padding:8px 2px 2px;border-top:1px solid var(--border);margin-top:4px">
+        ${[...hist].reverse().map(e => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-family:var(--mono);font-size:11px;color:var(--text3)">
+            <span>${esc(e.month)}${e.month > curMk ? ' (scheduled)' : ''}</span>
+            <span style="display:flex;align-items:center;gap:6px">
+              <span style="color:var(--text)">${fmt(e.value)}</span>
+              ${hist.length > 1 ? `<button style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px" onclick="deleteTargetHistoryEntry(${esc(JSON.stringify(t))},${esc(JSON.stringify(e.month))})">×</button>` : ''}
+            </span>
+          </div>`).join('')}
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <input type="month" id="sched-month-${esc(t)}" min="${curMk}" style="flex:1;background:var(--surface);border:1px solid var(--border2);padding:8px;font-size:12px;color:var(--text);font-family:var(--font)" />
+          <input type="number" id="sched-val-${esc(t)}" placeholder="$ target" inputmode="decimal" style="width:80px;background:var(--surface);border:1px solid var(--border2);padding:8px;font-size:12px;color:var(--text);font-family:var(--font)" />
+          <button class="add-etf-btn" style="padding:8px 10px;font-size:11px" onclick="scheduleTargetChange(${esc(JSON.stringify(t))})">Schedule</button>
+        </div>
+      </div>` : '';
     return `
     <div class="swipe-wrap" id="ssw-${esc(t)}">
       <div class="swipe-delete-bg">
-        <button class="swipe-delete-action" onclick="deleteETF(${esc(JSON.stringify(t))})">Delete</button>
+        <button class="swipe-delete-action" onclick="archiveETF(${esc(JSON.stringify(t))})">Archive</button>
       </div>
       <div class="settings-row swipe-item" id="srow-${esc(t)}" data-swipe-id="${esc(t)}" data-swipe-type="setting" style="flex-wrap:wrap;gap:6px">
         <span class="settings-ticker">${esc(t)}</span>
@@ -1409,9 +1649,20 @@ function renderSettings() {
               title="Opening rollover balance for ${esc(t)}"
               onchange="updateRolloverOpening(${esc(JSON.stringify(t))},this.value)" />`
         }
+        <button style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 4px" title="Target history" onclick="toggleTargetHistory(${esc(JSON.stringify(t))})">📜</button>
+        ${histPanel}
       </div>
     </div>`;
   }).join('');
+
+  const archived = state.archivedTickers || [];
+  const archivedRows = archived.map(t => `
+    <div class="settings-row">
+      <span class="settings-ticker">${esc(t)}</span>
+      <span class="settings-currency" style="flex:1;font-size:11px">archived</span>
+      <button class="add-etf-btn" style="padding:7px 10px;font-size:11px" onclick="restoreETF(${esc(JSON.stringify(t))})">Restore</button>
+      <button class="etf-delete-btn" title="Delete permanently" onclick="deleteETFPermanently(${esc(JSON.stringify(t))})">×</button>
+    </div>`).join('');
 
   closeAllSwipes();
   document.getElementById('settings-content').innerHTML = `
@@ -1452,6 +1703,19 @@ function renderSettings() {
         </div>
       </div>
     </div>
+    ${archived.length ? `
+    <div class="settings-section">
+      <div class="settings-title">Archived</div>
+      <div class="settings-card">${archivedRows}</div>
+    </div>` : ''}
+    <div class="settings-section">
+      <div class="settings-title">Backup</div>
+      <div style="display:flex;gap:8px">
+        <button class="export-btn" style="flex:1;justify-content:center" onclick="exportState()">↓ Export backup</button>
+        <label class="export-btn" style="flex:1;justify-content:center" for="json-upload">↑ Restore backup</label>
+        <input type="file" id="json-upload" accept=".json" style="display:none" onchange="importState(event)" />
+      </div>
+    </div>
     <div class="settings-section">
       <div class="settings-title">Targets</div>
       <button class="danger-btn" onclick="resetTargets()">Reset all targets to $0</button>
@@ -1474,6 +1738,8 @@ function addETF() {
   state.targets[ticker] = target;
   if (!state.currencies) state.currencies = {};
   state.currencies[ticker] = currency;
+  const now = new Date();
+  setTargetHistory(ticker, monthKey(now.getFullYear(), now.getMonth()), target);
   save();
   toast(ticker + ' added ✓');
   renderSettings();
@@ -1505,8 +1771,12 @@ function toggleHolding(ticker) {
 
 function updateRolloverOpening(ticker, val) {
   if (!state.rolloverOpeningBalances) state.rolloverOpeningBalances = {};
-  state.rolloverOpeningBalances[ticker] = parseFloat(val) || 0;
+  const v = parseFloat(val) || 0;
+  const old = state.rolloverOpeningBalances[ticker] || 0;
+  state.rolloverOpeningBalances[ticker] = v;
   save();
+  const hasHistory = state.transactions.some(tx => tx.ticker === ticker);
+  if (v !== old && hasHistory) toast('Opening balance updated — rollover recalculated across all tracked months');
 }
 
 function updateHoldingBalance(ticker, val) {
@@ -1520,31 +1790,57 @@ function updateUsdRate(val) {
   renderDashboard();
 }
 
-function deleteETFConfirm(ticker) {
+function archiveETFConfirm(ticker) {
   resetSwipe(ticker, 'card');
-  deleteETF(ticker);
+  archiveETF(ticker);
 }
 
-function deleteETF(ticker) {
+function archiveETF(ticker) {
   const hasTx = state.transactions.some(tx => tx.ticker === ticker);
   const msg = hasTx
-    ? `Remove ${ticker}? History kept — it won't show on the dashboard.`
-    : `Remove ${ticker}?`;
+    ? `Archive ${ticker}? It's hidden from Buy/Dashboard but its settings and history are kept — restore it any time from Targets.`
+    : `Archive ${ticker}?`;
   showConfirm(msg, () => {
     state.tickers = state.tickers.filter(t => t !== ticker);
-    delete state.targets[ticker];
-    state.holdingTickers = state.holdingTickers.filter(t => t !== ticker);
-    delete state.holdingBalances[ticker];
-    if (state.holdingStart) delete state.holdingStart[ticker];
+    if (!state.archivedTickers) state.archivedTickers = [];
+    if (!state.archivedTickers.includes(ticker)) state.archivedTickers.push(ticker);
     save();
-    toast(ticker + ' removed');
+    toast(ticker + ' archived');
     renderSettings();
     renderDashboard();
   });
 }
 
+function restoreETF(ticker) {
+  state.archivedTickers = (state.archivedTickers || []).filter(t => t !== ticker);
+  if (!state.tickers.includes(ticker)) state.tickers.push(ticker);
+  save();
+  toast(ticker + ' restored');
+  renderSettings();
+  renderDashboard();
+}
+
+function deleteETFPermanently(ticker) {
+  showConfirm(`Permanently delete ${ticker}'s settings? Past buys stay in History/CSV export, but target and holding config are gone for good.`, () => {
+    state.archivedTickers = (state.archivedTickers || []).filter(t => t !== ticker);
+    delete state.targets[ticker];
+    if (state.targetHistory) delete state.targetHistory[ticker];
+    state.holdingTickers = state.holdingTickers.filter(t => t !== ticker);
+    delete state.holdingBalances[ticker];
+    if (state.holdingStart) delete state.holdingStart[ticker];
+    delete state.rolloverOpeningBalances[ticker];
+    if (state.currencies) delete state.currencies[ticker];
+    save();
+    toast(ticker + ' deleted permanently');
+    renderSettings();
+  });
+}
+
 function updateTarget(ticker, val) {
-  state.targets[ticker] = parseFloat(val) || 0;
+  const v = parseFloat(val) || 0;
+  state.targets[ticker] = v;
+  const now = new Date();
+  setTargetHistory(ticker, monthKey(now.getFullYear(), now.getMonth()), v);
   save();
   refreshTotal();
 }
@@ -1574,7 +1870,9 @@ function resetMonth() {
 
 function resetTargets() {
   showConfirm('Reset all monthly targets to $0? Buy history is preserved.', () => {
-    getTickers().forEach(t => { state.targets[t] = 0; });
+    const now = new Date();
+    const curMk = monthKey(now.getFullYear(), now.getMonth());
+    getTickers().forEach(t => { state.targets[t] = 0; setTargetHistory(t, curMk, 0); });
     save();
     toast('Targets reset to $0');
     renderSettings();
